@@ -1,10 +1,10 @@
-// jshint esversion: 6 
-// jshint strict:false
+// version 158
+
 /************
    Controls:
    
  Z   -   Jump
- X   -   Shoot (don't mind the weird projectiles)
+ X   -   Shoot
  C   -   Reverse gravity
 *************/
 'use strict';
@@ -193,16 +193,22 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
         this.timer = this.delay;
 
         let p = this.projectile;
-        new Projectile(this.x + this.sprite.w * this.size * (this.owner.facing == 0 ? 1 : -1), this.y,
-                      p.w, p.h, p.spd, 180*owner.facing + 90, p.sprite);
+        let direction = 180 * owner.facing + 90;
+        let offset = (this.owner.facing == 0 ? 1 :-1);
+        if (this.owner.up)
+        {
+          offset = 0;
+          direction = 180;
+        }
+        
+        new Projectile(this.x + this.sprite.w * this.size * offset, this.y,
+                      p.w, p.h, p.spd, direction, p.sprite);
       }
       this.draw();
     },
     
     draw: function()
     {
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(this.x, this.y, 3, 3);
       ctx.textStyle = "14px monospace";
       this.sprite.draw(this.x, this.y,
                        this.sprite.w * this.size, this.sprite.h * this.size);
@@ -238,9 +244,6 @@ function Enemy(x, y, w, h, sprite)
              if (obj === this) continue;
         if (["Object", "Player", "Enemy"].includes(obj.type))
         {
-        
-          //if (boxIntersect(this.x, this.y))
-        
           if (boxIntersect(this.x, this.y,
                            this.xscale, this.yscale,
                            obj.x, obj.y,
@@ -274,6 +277,20 @@ function Enemy(x, y, w, h, sprite)
   return obj;
 }
 
+function DeathScreen()
+{
+  var a = {
+    timer: 0,
+    timerEvents: {},
+    
+    update: function()
+    {
+      this.timer++;
+    }
+  };
+  GLOBAL.OBJECTS.push(a);
+  return a;
+}
 
 // main objs //
 function Player(x, y, wep) 
@@ -287,6 +304,7 @@ return {
   xscale: 16,
   yscale: 32,
   facing: 1,
+  up: false,
   speed: 4.6,
   jumpTime: 0,
   grounded: false,
@@ -295,9 +313,10 @@ return {
   sprite: new Sprite(spritesheet, 0, 0, 5, 9),
   TMPsprite: new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0),
   weapon: wep,
+  weapons: [wep],
   type: "Player",
   // weapon //
-  wepSpriteOffset: 0,
+  weaponSpriteOffset: (this.weapon ? this.weapon.sprite.h : 10),
   // damage //
   invincibilityFrames: 180,
   dTimerRun: false,
@@ -305,8 +324,17 @@ return {
   damageFlash: false,
   damageFlashTimer: 0,
   damageFlashDelay: {orig: 30, current: 0},
+  // life (or death)
+  dead: false,
   
-  damage: function(dmg)
+  equip: function(weapon)
+  {
+    this.weapon = weapon;
+    this.weaponSpriteOffset = weapon.sprite.h;
+    //if (!this.weapons.includes(weapon))
+  },
+  
+  damage: function(dmg, force)
   {
     if (this.damageTimer != 0) return;
     this.hp -= dmg;
@@ -314,18 +342,24 @@ return {
     this.dTimerRun = true;
   },
   
+  die: function()
+  {
+    this.dead = true;
+    new DeathScreen();
+  },
+  
   input: function()
   {
     let left = boolInt(keyDown("ARROWLEFT"));
     let right = boolInt(keyDown("ARROWRIGHT"));
-    let up = boolInt(keyDown("ARROWUP"));
+    this.up = boolInt(keyDown("ARROWUP"));
     let down = boolInt(keyDown("ARROWDOWN"));
     this.vx = clamp(this.vx + 
     (this.speed / 8 * right) -
      this.speed / 8 * left, -this.speed, this.speed);
     if (!left && !right || left && right && this.grounded) this.vx *= 0.7;
     if (left != 0) this.facing = 1;
-    if (right != 0) this.facing = 0;
+    else if (right != 0) this.facing = 0;
     if (keyDown("Z"))
     {
       if (this.grounded) this.jumping = true;
@@ -335,16 +369,19 @@ return {
       this.jumping = false;
       this.jumpTime = 0;
     }
+    
     if (this.jumping)
     {
       this.jumpTime = clamp(this.jumpTime + 0.12, 0, 1.7);
       this.vy = clamp(this.vy + (1.7 - this.jumpTime) * -GLOBAL.GRAVITY, 
                      -this.maxvy / 2, this.maxvy / 2);
     }
+    
     if (keyPressed("C"))
     {
       GLOBAL.GRAVITY *= -1;
       this.sprite.y = GLOBAL.GRAVITY < 0 ? 10 : 0;
+      this.weapon.sprite.y += (GLOBAL.GRAVITY < 0 ? this.weaponSpriteOffset : -this.weaponSpriteOffset);
       
     }
     
@@ -354,7 +391,6 @@ return {
     }
     
     this.sprite.x = 12 * this.facing;
-
     
     if (keyPressed("R"))
     {
@@ -374,9 +410,7 @@ return {
   {
     this.input();
     
-    //this.hp = Math.abs(Math.sin(TIME.frame/100))*3;
     if (!this.grounded) this.vy = clamp(this.vy + GLOBAL.GRAVITY * (this.jumping ? 0.16 : 0.32), -this.maxvy, this.maxvy);
-    
     
     // collision hell
     // horizontal
@@ -434,8 +468,6 @@ return {
         this.y += sign(this.vy);
      }
     
-    ctx.fillStyle = "rgb(255,255,255)";
-    
     // ground collision
     for (let o = 0; o < GLOBAL.OBJECTS.length; o++)
     {
@@ -487,8 +519,6 @@ return {
   draw: function()
   {
     this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
-    //if (this.weapon) this.weapon.update();
-    //this.TMPsprite.draw(this.x, this.y, this.xscale, this.yscale);
     ctx.textStyle = "14px Times New Roman white";
   },
 };
@@ -527,7 +557,7 @@ let o = new Enemy(64,64);
 
 
 GLOBAL.WEAPONS = [
-  new Weapon("L", player, true, 5, [0, 0], 
+  new Weapon("testpistol", player, true, 5, [0, 0], 
              new Projectile(0, 0, 12, 12, 20, 0, player.sprite),
              new Sprite(spritesheet, 10, 22, 10, 6), 
              2)
@@ -536,7 +566,7 @@ GLOBAL.WEAPONS = [
 ];
 
 /// debug!
-player.weapon = GLOBAL.WEAPONS[0];
+player.equip(GLOBAL.WEAPONS[0]);
 
 // main loop //
 function update()
@@ -718,9 +748,8 @@ if (!JSONfn)
 // sorry for the mess! :p
 
 (function(){
-spritesheet.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAABACAYAAAD1Xam+AAAFe0lEQVR4Xu2dUX7bIAyH7TPstd0FdqruYj3VLrDudWfIfnZMRohtjAQW4G8vbTOE0F/iCwHbGYfl3+12u43jOLqfW68fbefs9/qf+grb8fe5Csw5Hz6azMM4fI7nqtWft1nAcCJORbH1ekpbf/L70m3135+8DUQ0/hzG4VM00NvwIbZ91Iaij8U/EBBl725UHABr7/IhABbeKMLANFWBx+JLAYBUn7nbAwC9ogBAr2GTPQCAJtOWfdCnA8C9+/sfMVgBZM9rtEMAEJXoEg3mTb8wUrcZWPJ1AGBbXwDAVv9avAOAWjJx8jgAwMmCV+oOAFSamNLDAgClFW6j/8cegL8zv/e7f52A5nc+AtgWCACw1b8W76ZnqG7/gU3A88sBAJyveY0ei68AXNBrVxACALuSAAB22tfkufgegL/Ud4FzIZB9CQAA+xzUMILiAOBKwBrS/DoGAFBnXs4eFQA4W/FK/AGAShJhPAyuBDROgJV7AGClfF1+TwfAFD57APZF4ANgzongjkDLuwEn38u4TU+y7DOpGwEA0OnXrHXOFYCbjKliSKDj++BuwFTFX9sDAL2GTfaQCwCaVYDGdj5duj9LgBWAogIf4h190s/Rdm5MW1cLzglcqpALgRQZFJoCAKFwnZmZ0hMA2FUTALDTvibPAKCmbJw4FgBwotgVu7rvAXx93Ya3t9dh/vkzjO/vxSDBCsCuMgCAnfY1eV69ECgc4OPYLvL02GlDJvaEWX/ThqcCV1AKymcCajbyNLZsAuapncMAmCb23rGN25E92s7fBMwTCr2IFAAAItl6MVIBwD//fXpn91YKITT8oxs+AtiVER8B7LSvybMIAClXYbmPBA4EAKCO9AOAOvJgPYqkTUBvMidvDK7ZsgKwSz8AsNO+Js/JEznn4AFATjXT+gIAaXr12hoA9JrZSFwA4KKJD8I2BYAbC8eB5xejf7SruSlHc5SnseUYME/NAIA8OjbXCwBoLmVFBlwFAIpERqeHFIhdt3GkE24HPqJSnW1MAPD719/568i+//hm4r/OVNiMKjymTRmFdgnvLeNT3M5tU46ikzu/kAET8ELJXgs1xwrASkKeB6BXHgDoNWy6BwDQdPrUgwcAagnb7gAAtJ0/7egBgFbBxu0BQOMJVA4fACgFbN0cALSeQd34AYBOv+atAUDzKVQFAABU8rVvDADaz6EmAgCgUa8DWwDQQRIVIQAAhXg9mAKAHrIojwEAyLXrwhIAdJFGcRAAQCxdH4YAoI88SqMAAFLlOrEDAJ0kUhgGABAK14sZAOglk7I4XgDgf5ef63LtNd9dqs1Wf3t+Un1M47O02fKv0U2W4n0rDQBy3A0463T/ks/k8LgZKFmyF4MnAOw9mcc9QCLsAZv/X3K6lo6cuunTvd5D7MtcSvnV9ss3A2sVHAYAEGhYM9D06aYHFHhWAAAAAObEhRUAAADgwuVP6AAAADALLqwAAAAAFy5/Ql8FwDiO0xHaQ53p7yHYMHT/uRy1PbWfG+/YLCd0r0cSiTZunFs77aEfP67Y7nyowRLT6nUTOTcOI7pRsSiQVYH7dwP6s32j+7UJE7OLTbI1V2fZON+hP0lMqQCQ+MiadTpDgUWB0wEQK/6td9qYnQRQa75y+5GMa2dFQ+GiQFYFxACITRTpRJbaSSZaDgBIdIjZAICsNU5nOwqMsWKULpWlEzmnnSS2Izb+BC3dnupFgZIKAID7huVjc6/0hE7tv2Ty6RsFAAAAYBZcWAHxHsCR04Ncn8vP9BV7h049Ncixz3Dh+iT0wgpwIVAgcOqRXgxOOY81C9cC3V9QAQAAAC5Y9oT82NwPpQgfohF7GIh7Bww30mJHWfh5fWDJEa0pXRTIqcA/b6JYmyuHlZUAAAAASUVORK5CYII=";
-
-fontsheet.src = "data:image/png;base64,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";
+spritesheet.src = "data:image/png;base64,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"
+//fontsheet.src = "data:image/png;base64,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";
 
 
 GLOBAL.LEVELS = [
