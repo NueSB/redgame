@@ -1,10 +1,10 @@
-// version 158
+// version 162
 
 /************
    Controls:
    
  Z   -   Jump
- X   -   Shoot
+ X   -   Shoot (don't mind the weird projectiles)
  C   -   Reverse gravity
 *************/
 'use strict';
@@ -200,6 +200,11 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
           offset = 0;
           direction = 180;
         }
+        if (this.owner.down && !this.owner.grounded)
+        {
+          offset = 0;
+          direction = 360;
+        }
         
         new Projectile(this.x + this.sprite.w * this.size * offset, this.y,
                       p.w, p.h, p.spd, direction, p.sprite);
@@ -244,6 +249,9 @@ function Enemy(x, y, w, h, sprite)
              if (obj === this) continue;
         if (["Object", "Player", "Enemy"].includes(obj.type))
         {
+        
+          //if (boxIntersect(this.x, this.y))
+        
           if (boxIntersect(this.x, this.y,
                            this.xscale, this.yscale,
                            obj.x, obj.y,
@@ -305,6 +313,7 @@ return {
   yscale: 32,
   facing: 1,
   up: false,
+  down: false,
   speed: 4.6,
   jumpTime: 0,
   grounded: false,
@@ -353,13 +362,13 @@ return {
     let left = boolInt(keyDown("ARROWLEFT"));
     let right = boolInt(keyDown("ARROWRIGHT"));
     this.up = boolInt(keyDown("ARROWUP"));
-    let down = boolInt(keyDown("ARROWDOWN"));
+    this.down = boolInt(keyDown("ARROWDOWN"));
     this.vx = clamp(this.vx + 
     (this.speed / 8 * right) -
      this.speed / 8 * left, -this.speed, this.speed);
     if (!left && !right || left && right && this.grounded) this.vx *= 0.7;
     if (left != 0) this.facing = 1;
-    else if (right != 0) this.facing = 0;
+    if (right != 0) this.facing = 0;
     if (keyDown("Z"))
     {
       if (this.grounded) this.jumping = true;
@@ -387,7 +396,7 @@ return {
     
     if (keyPressed("B"))
     {
-      new Enemy(this.x, this.y - 128, this.xscale/2, this.yscale/2, this.sprite);
+      new Enemy(this.x, this.y - 128, this.xscale/2, this.yscale/2, new Sprite(spritesheet, 2, 28, 5, 7));
     }
     
     this.sprite.x = 12 * this.facing;
