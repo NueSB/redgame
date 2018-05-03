@@ -1,4 +1,4 @@
-// version 166
+// version 172
 
 /************
    Controls:
@@ -27,7 +27,7 @@ var TIME = {
 };
 
 var GLOBAL = {
-  OBJECTS: [{update:function(){}}],
+  OBJECTS: [],
   KEYS: new Map(),
   GRAVITY: 1.0,
   FONT: new Sprite(),
@@ -85,7 +85,11 @@ function AnimatedSprite(src, x, y, w, h,
       a.frame++;
       if (a.frame > a.frames)
       {
-        if (!a.loop) arrayRemove(a, GLOBAL.OBJECTS);
+        if (!a.loop) 
+        {
+          arrayRemove(a, GLOBAL.OBJECTS);
+          return;
+        }
         a.frame = 0;
       }
     }
@@ -153,7 +157,7 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
     draw: function()
     {
       ctx.fillStyle = "rgb(255,255,255)";
-      ctx.fillText(`${this.time}\n${this.destroyTime}`, this.x, this.y -64);
+      //ctx.fillText(`${this.time}\n${this.destroyTime}`, this.x, this.y -64);
       this.sprite.draw(this.x, this.y, this.w, this.h);
     }
   };
@@ -208,8 +212,15 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
           direction = 360;
         }
         
+        let sprite = p.sprite;
+        if (p.sprite.type === "AnimatedSprite")
+        {
+          // puke emoji
+          sprite = new AnimatedSprite(p.sprite.src, p.sprite.x, p.sprite.y, p.sprite.w, p.sprite.h, 0, p.sprite.frames, p.sprite.time, p.sprite.offset);
+        }
+        
         new Projectile(this.x + this.sprite.w * this.size * offset, this.y - (p.w / 2),
-                      p.w, p.h, p.spd, direction, p.sprite, p.destroyTime);
+                      p.w, p.h, p.spd, direction, sprite, p.destroyTime);
       }
       this.draw();
     },
@@ -532,7 +543,6 @@ return {
   draw: function()
   {
     this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
-    ctx.textStyle = "14px Times New Roman white";
   },
 };
 }
@@ -565,8 +575,8 @@ let player = new Player(0, 0),
 
 GLOBAL.WEAPONS = [
   new Weapon("testpistol", null, true, 5, [0, 0], 
-             new Projectile(0, 0, 20, 20, 6, 0, 
-               new AnimatedSprite(spritesheet, 178, 0, 9, 5, 0, 4, 2, 1, false), 60),
+             new Projectile(0, 0, 20, 20, 5, 0, 
+               new AnimatedSprite(spritesheet, 178, 0, 10, 5, 0, 5, 10, 1, false), 60),
              new Sprite(spritesheet, 10, 22, 10, 6), 
              2)
   // Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
@@ -633,12 +643,14 @@ function loadLevel(level)
   player.equip(GLOBAL.WEAPONS[0]);
   camera =  new Camera(player);
   GLOBAL.OBJECTS = [player, camera];
+  GLOBAL.GRAVITY = 1;
   
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
   for(let i = 0; i < GLOBAL.WEAPONS.length; i++)
   {
     let wep = GLOBAL.WEAPONS[i];
+    if (wep.owner != null && wep.owner.type === "Player")
     if (wep.projectile.sprite.type === "AnimatedSprite")
     {
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
