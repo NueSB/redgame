@@ -1,10 +1,10 @@
-// version 172
+// version 173
 
 /************
    Controls:
    
  Z   -   Jump
- X   -   Shoot (don't mind the weird projectiles)
+ X   -   Shoot
  C   -   Reverse gravity
 *************/
 //'use strict';
@@ -85,11 +85,7 @@ function AnimatedSprite(src, x, y, w, h,
       a.frame++;
       if (a.frame > a.frames)
       {
-        if (!a.loop) 
-        {
-          arrayRemove(a, GLOBAL.OBJECTS);
-          return;
-        }
+
         a.frame = 0;
       }
     }
@@ -130,7 +126,11 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
     update: function()
     {
       this.time++;
-      if (this.time >= this.destroyTime) arrayRemove(this, GLOBAL.OBJECTS);
+      if (this.time >= this.destroyTime) 
+      {
+        if (this.sprite.type === "AnimatedSprite") arrayRemove(this.sprite, GLOBAL.OBJECTS);
+        arrayRemove(this, GLOBAL.OBJECTS);
+      }
       
             
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
@@ -164,8 +164,41 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
   
   GLOBAL.OBJECTS.push(a);
   
-  return a;
+  return a; 
+}
+
+function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
+{
+  var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
+  a.origSpd = speed;
+  a.update = function()
+  {
+    this.time++;
+    if (this.time >= this.destroyTime) arrayRemove(this, GLOBAL.OBJECTS);
+    if (this.time > 25) this.spd *= 0.75;
+   // this.w *= this.spd / this.origSpd;
+    for (let i = 1; i < GLOBAL.OBJECTS.length; i++)
+    {
+      let obj = GLOBAL.OBJECTS[i];
+      if (obj.type === "Object")
+      {
+
+        if (boxIntersect(this.x + this.spd * Math.cos(this.angle * Math.PI / 180),
+            this.y + this.spd * Math.cos(this.angle * Math.PI / 180),
+            this.w, this.h,
+            obj.x, obj.y,
+            obj.xscale, obj.yscale))
+        {
+          arrayRemove(this, GLOBAL.OBJECTS);
+        }
+      }
+    }
+    this.x += this.spd * Math.sin(this.angle * Math.PI / 180);
+    this.y += this.spd * Math.cos(this.angle * Math.PI / 180);
+    this.draw();
+  }
   
+  return a;
 }
 
 function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
@@ -197,7 +230,7 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
       if ((this.auto ? keyDown("X") : keyPressed("X")) && this.timer === 0)
       {
         this.timer = this.delay;
-
+        
         let p = this.projectile;
         let direction = 180 * this.owner.facing + 90;
         let offset = (this.owner.facing == 0 ? 1 :-1);
@@ -219,8 +252,15 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
           sprite = new AnimatedSprite(p.sprite.src, p.sprite.x, p.sprite.y, p.sprite.w, p.sprite.h, 0, p.sprite.frames, p.sprite.time, p.sprite.offset);
         }
         
-        new Projectile(this.x + this.sprite.w * this.size * offset, this.y - (p.w / 2),
-                      p.w, p.h, p.spd, direction, sprite, p.destroyTime);
+        let x = this.x + this.sprite.w * this.size * offset,
+                         y = this.y - (p.w / 2),
+                         w = p.w,
+                         h = p.h,
+                         spd = p.spd,
+                         destructTime = p.destroyTime;
+                         
+         let t = new Projectile(x,y,w,h,spd,direction,sprite,destructTime);
+         t.update = p.update;
       }
       this.draw();
     },
@@ -334,7 +374,7 @@ return {
   jumping: false,
   hp: 3,
   sprite: new Sprite(spritesheet, 0, 0, 5, 9),
-  TMPsprite: new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0),
+  TMPsprite: new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0, true),
   weapon: wep,
   weapons: [wep],
   type: "Player",
@@ -575,8 +615,8 @@ let player = new Player(0, 0),
 
 GLOBAL.WEAPONS = [
   new Weapon("testpistol", null, true, 5, [0, 0], 
-             new Projectile(0, 0, 20, 20, 5, 0, 
-               new AnimatedSprite(spritesheet, 178, 0, 10, 5, 0, 5, 10, 1, false), 60),
+             new TestPistolProjectile(0, 0, 20, 20, 5, 0, 
+               new Sprite(spritesheet, 178, 0, 10, 5), 60),
              new Sprite(spritesheet, 10, 22, 10, 6), 
              2)
   // Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
