@@ -616,7 +616,7 @@ let player = new Player(0, 0),
 GLOBAL.WEAPONS = [
   new Weapon("testpistol", null, true, 5, [0, 0], 
              new TestPistolProjectile(0, 0, 20, 20, 5, 0, 
-               new Sprite(spritesheet, 178, 0, 10, 5), 60),
+               new Sprite(spritesheet, 178, 0, 10, 5), 600),
              new Sprite(spritesheet, 10, 22, 10, 6), 
              2)
   // Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
