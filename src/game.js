@@ -1,4 +1,4 @@
-// version 173
+// version 174
 
 /************
    Controls:
@@ -204,9 +204,9 @@ function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
 {
   let a = {
-    x: 50,
-    y: 50,
-    name: (name ? name : "h"),
+    x: 0,
+    y: 0,
+    name: name,
     owner: owner,
     auto: auto,
     delay: delay,
@@ -355,7 +355,7 @@ function DeathScreen()
 }
 
 // main objs //
-function Player(x, y, wep) 
+function Player(x, y) 
 {
 return {
   x: x,
@@ -375,8 +375,9 @@ return {
   hp: 3,
   sprite: new Sprite(spritesheet, 0, 0, 5, 9),
   TMPsprite: new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0, true),
-  weapon: wep,
-  weapons: [wep],
+  weapon: null,
+  weaponIndex: 0,
+  weapons: [],
   type: "Player",
   // weapon //
   weaponSpriteOffset: (this.weapon ? this.weapon.sprite.h : 10),
@@ -390,12 +391,19 @@ return {
   // life (or death)
   dead: false,
   
+  unequip: function()
+  {
+    //this.weapon = null;
+    this.weapon.owner = null;
+    this.weaponSpriteOffset = 0;
+  },
+  
   equip: function(weapon)
   {
     weapon.owner = this;
     this.weapon = weapon;
     this.weaponSpriteOffset = weapon.sprite.h;
-    //if (!this.weapons.includes(weapon))
+    if (!this.weapons.includes(weapon)) this.weapons.push(weapon);
   },
   
   damage: function(dmg, force)
@@ -414,8 +422,10 @@ return {
   
   input: function()
   {
-    let left = boolInt(keyDown("ARROWLEFT"));
-    let right = boolInt(keyDown("ARROWRIGHT"));
+    let left = boolInt(keyDown("ARROWLEFT")),
+        right = boolInt(keyDown("ARROWRIGHT"));
+        wepSwitch = [keyPressed("A"), keyPressed("S")];
+    
     this.up = boolInt(keyDown("ARROWUP"));
     this.down = boolInt(keyDown("ARROWDOWN"));
     this.vx = clamp(this.vx + 
@@ -448,6 +458,21 @@ return {
       this.weapon.sprite.y += (GLOBAL.GRAVITY < 0 ? this.weaponSpriteOffset : -this.weaponSpriteOffset);
       
     }
+    
+    if (wepSwitch[0] || wepSwitch[1])
+    {
+      let dir = (wepSwitch[0] ? -1 : 1);
+      this.weaponIndex = max((this.weaponIndex + dir) % this.weapons.length, 0);
+      console.log(this.weapons[0]);
+      //this.unequip();
+      console.log(this.weaponIndex);
+      this.weapon.owner = null;
+      this.weapon = this.weapons[this.weaponIndex];
+      this.weapon.owner = this;
+
+    }
+    
+    ////////////////////
     
     if (keyPressed("B"))
     {
@@ -618,12 +643,15 @@ GLOBAL.WEAPONS = [
              new TestPistolProjectile(0, 0, 20, 20, 5, 0, 
                new Sprite(spritesheet, 178, 0, 10, 5), 600),
              new Sprite(spritesheet, 10, 22, 10, 6), 
+             2),
+  new Weapon("pesttistol", null, false, 5, [0, 0], 
+             new Projectile(0, 0, 10, 10, 5, 0, 
+               new Sprite(spritesheet, 178, 0, 10, 5), 600),
+             new Sprite(spritesheet, 10, 22, 10, 6), 
              2)
   // Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
   // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
 ];
-
-
 
 // init //
 spritesheet.onload = function()
@@ -653,7 +681,7 @@ function update()
   
   for (var j = 0; j < GLOBAL.WEAPONS.length; j++)
   {
-    GLOBAL.WEAPONS[j].update();
+    if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
   
   camera.drawGUI(xmove, ymove);
@@ -681,6 +709,7 @@ function loadLevel(level)
   
   player = new Player(0,0);
   player.equip(GLOBAL.WEAPONS[0]);
+  player.equip(GLOBAL.WEAPONS[1]);
   camera =  new Camera(player);
   GLOBAL.OBJECTS = [player, camera];
   GLOBAL.GRAVITY = 1;
@@ -691,6 +720,7 @@ function loadLevel(level)
   {
     let wep = GLOBAL.WEAPONS[i];
     if (wep.owner != null && wep.owner.type === "Player")
+    {}
     if (wep.projectile.sprite.type === "AnimatedSprite")
     {
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
@@ -704,9 +734,7 @@ function loadLevel(level)
     let obj = level.objs[i];
     GLOBAL.OBJECTS.push(obj);
   }
-  
 }
-
 
 //
 // utils
@@ -755,9 +783,13 @@ function slerp(x, target)
 {
   return x + (target - x) * 0.2;
 }
+function max(x, y)
+{
+  return (x >= y ? x : y);
+}
 function min(x, y)
 {
-  return x <= y ? x : y;
+  return (x <= y ? x : y);
 }
 function clamp(val, min, max)
 {
