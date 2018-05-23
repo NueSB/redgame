@@ -463,9 +463,6 @@ return {
     {
       let dir = (wepSwitch[0] ? -1 : 1);
       this.weaponIndex = max((this.weaponIndex + dir) % this.weapons.length, 0);
-      console.log(this.weapons[0]);
-      //this.unequip();
-      console.log(this.weaponIndex);
       this.weapon.owner = null;
       this.weapon = this.weapons[this.weaponIndex];
       this.weapon.owner = this;
