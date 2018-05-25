@@ -1,5 +1,3 @@
-// version 174
-
 /************
    Controls:
    
@@ -168,6 +166,40 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
 }
 
 function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
+{
+  var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
+  a.origSpd = speed;
+  a.update = function()
+  {
+    this.time++;
+    if (this.time >= this.destroyTime) arrayRemove(this, GLOBAL.OBJECTS);
+    if (this.time > 25) this.spd *= 0.75;
+   // this.w *= this.spd / this.origSpd;
+    for (let i = 1; i < GLOBAL.OBJECTS.length; i++)
+    {
+      let obj = GLOBAL.OBJECTS[i];
+      if (obj.type === "Object")
+      {
+
+        if (boxIntersect(this.x + this.spd * Math.cos(this.angle * Math.PI / 180),
+            this.y + this.spd * Math.cos(this.angle * Math.PI / 180),
+            this.w, this.h,
+            obj.x, obj.y,
+            obj.xscale, obj.yscale))
+        {
+          arrayRemove(this, GLOBAL.OBJECTS);
+        }
+      }
+    }
+    this.x += this.spd * Math.sin(this.angle * Math.PI / 180);
+    this.y += this.spd * Math.cos(this.angle * Math.PI / 180);
+    this.draw();
+  }
+  
+  return a;
+}
+
+function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 {
   var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
   a.origSpd = speed;
@@ -393,15 +425,19 @@ return {
   
   unequip: function()
   {
-    //this.weapon = null;
-    this.weapon.owner = null;
+    if (this.weapon != null)
+    {
+      this.weapon.owner = null;
+      this.weapon = null;
+    }
     this.weaponSpriteOffset = 0;
   },
   
   equip: function(weapon)
   {
-    weapon.owner = this;
+    if (this.weapon != null) this.unequip();
     this.weapon = weapon;
+    weapon.owner = this;
     this.weaponSpriteOffset = weapon.sprite.h;
     if (!this.weapons.includes(weapon)) this.weapons.push(weapon);
   },
@@ -462,7 +498,8 @@ return {
     if (wepSwitch[0] || wepSwitch[1])
     {
       let dir = (wepSwitch[0] ? -1 : 1);
-      this.weaponIndex = max((this.weaponIndex + dir) % this.weapons.length, 0);
+      this.weaponIndex = (this.weaponIndex + dir) % this.weapons.length;
+      if (this.weaponIndex === -1) this.weaponIndex = this.weapons.length-1;
       this.weapon.owner = null;
       this.weapon = this.weapons[this.weaponIndex];
       this.weapon.owner = this;
