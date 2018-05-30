@@ -219,10 +219,11 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
     if (this.time > 15) 
     {
       this.spd *= 0.95;
-      if (this.w > 0.01)
+      this.w *= 0.95;
+      this.h *= 0.95;
+      if (this.w <= 0.01)
       {
-        this.w *= 0.95;
-        this.h *= 0.95;
+        arrayRemove(this, GLOBAL.OBJECTS);
       }
     }
     for (let i = 1; i < GLOBAL.OBJECTS.length; i++)
