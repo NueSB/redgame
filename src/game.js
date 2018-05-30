@@ -204,12 +204,24 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 {
   var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
   a.origSpd = speed;
+  a.origW = w;
+  a.run = false;
   a.update = function()
   {
+    if (!this.run)
+    {
+      this.run = true;
+      this.x += Math.random() * 20;
+      this.y += (Math.random() - 0.5) * 40;
+    }
     this.time++;
     if (this.time >= this.destroyTime) arrayRemove(this, GLOBAL.OBJECTS);
-    if (this.time > 25) this.spd *= 0.75;
-   // this.w *= this.spd / this.origSpd;
+    if (this.time > 15) 
+    {
+      this.spd *= 0.95;
+      this.w *= 0.95;
+      this.h *= 0.95;
+    }
     for (let i = 1; i < GLOBAL.OBJECTS.length; i++)
     {
       let obj = GLOBAL.OBJECTS[i];
@@ -234,7 +246,7 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
   return a;
 }
 
-function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
+function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
 {
   let a = {
     x: 0,
@@ -247,6 +259,8 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
     projectile: projectile,
     sprite: sprite,
     size: size,
+    shots: shots,
+    kickback: kickback || 0,
     // private (not actually)
     timer: delay,
     origspritex: sprite.x,
@@ -277,7 +291,25 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
           offset = 0;
           direction = 360;
         }
-        
+        switch(direction)
+        {
+          case 0:
+            this.owner.vx += this.kickback;
+            break;
+          
+          case 90:
+            this.owner.vx -= this.kickback;
+            break;
+            
+          case 180:
+            this.owner.vy += this.kickback;
+            break;
+          
+          case 360:
+            this.owner.vy -= this.kickback;
+            break;
+        }
+
         let sprite = p.sprite;
         if (p.sprite.type === "AnimatedSprite")
         {
@@ -285,15 +317,20 @@ function Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
           sprite = new AnimatedSprite(p.sprite.src, p.sprite.x, p.sprite.y, p.sprite.w, p.sprite.h, 0, p.sprite.frames, p.sprite.time, p.sprite.offset);
         }
         
-        let x = this.x + this.sprite.w * this.size * offset,
-                         y = this.y - (p.w / 2),
-                         w = p.w,
-                         h = p.h,
-                         spd = p.spd,
-                         destructTime = p.destroyTime;
+        for (let i = 0; i < shots; i++)
+        {
+                let x = this.x + this.sprite.w * this.size * offset,
+                    y = this.y - (p.w / 2),
+                    w = p.w,
+                    h = p.h,
+                    spd = p.spd,
+                    destructTime = p.destroyTime;
                          
          let t = new Projectile(x,y,w,h,spd,direction,sprite,destructTime);
          t.update = p.update;
+         
+
+        }
       }
       this.draw();
     },
@@ -674,17 +711,17 @@ let player = new Player(0, 0),
     camera = new Camera(player);
 
 GLOBAL.WEAPONS = [
-  new Weapon("testpistol", null, true, 5, [0, 0], 
+  new Weapon("testpistol", null, true, 5, [0, 0], 1, 
              new TestPistolProjectile(0, 0, 20, 20, 5, 0, 
                new Sprite(spritesheet, 0, 21, 8, 4), 600),
              new Sprite(spritesheet, 10, 22, 10, 6), 
-             2),
-  new Weapon("pesttistol", null, false, 5, [0, 0], 
-             new PumpProjectile(0, 0, 10, 10, 5, 0, 
+             2, 0),
+  new Weapon("pesttistol", null, false, 5, [0, 0], 6,
+             new PumpProjectile(0, 0, 30, 30, 5, 10, 
                new Sprite(spritesheet, 0, 21, 8, 4), 600),
              new Sprite(spritesheet, 177, 0, 16, 7), 
-             2)
-  // Weapon(name, owner, auto, delay, offset, projectile, sprite, size)
+             2, 20)
+  // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
   // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
 ];
 
