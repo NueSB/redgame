@@ -24,6 +24,7 @@ var GLOBAL = {
   {
     width: 1280,
     height: 720,
+    color: "#AA11FF",
     bg: "#000000"
   }
 };
@@ -147,6 +148,7 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
     draw: function()
     {
       ctx.fillStyle = "rgb(255,255,255)";
+      //ctx.fillText(`${this.time}\n${this.destroyTime}`, this.x, this.y -64);
       this.sprite.draw(this.x, this.y, this.w, this.h);
     }
   };
@@ -368,6 +370,9 @@ function Enemy(x, y, w, h, sprite)
         if (obj === this) continue;
         if (["Object", "Player", "Enemy"].includes(obj.type))
         {
+
+          //if (boxIntersect(this.x, this.y))
+
           if (boxIntersect(this.x, this.y,
               this.xscale, this.yscale,
               obj.x, obj.y,
@@ -689,7 +694,7 @@ function Wall(x, y, w, h)
     yscale: h,
     type: "Object",
     update: function() { this.draw() },
-    draw: function(){ ctx.fillStyle = "#FF0000"; ctx.fillRect(this.x, this.y, this.xscale, this.yscale); }
+    draw: function(){ ctx.fillStyle = GLOBAL.ROOM.color; ctx.fillRect(this.x, this.y, this.xscale, this.yscale); }
     
   }
 }
@@ -711,10 +716,38 @@ function Camera(target)
       ctx.drawImage(spritesheet, 32, 0, 96, 32,
         x + 1, y + 1, 215, 32);
 
-      ctx.fillStyle = "#ff0055";
+      ctx.fillStyle = GLOBAL.ROOM.color;
       if (target.type === "Player") ctx.fillRect(x + 3, y + 9, 209 * (target.hp / 3), 14);
     }
   };
+}
+
+
+function SlideTransition(speed, out, lvl)
+{
+  let obj = {
+    x: 0,
+    y: 0,
+    w: this.out ? 0 : canvas.width,
+    h: canvas.width,
+    out: out,
+    timer: 0,
+    type: "",
+    update: function()
+    {
+      this.timer += (this.out ? 1 : -1);
+      this.x = camera.x;
+      this.y = camera.y;
+      this.w += this.timer;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+      
+      if (this.out && this.w >= canvas.width) loadLevel(lvl);
+      else if (!this.out && this.w < 0) arrayRemove(this, GLOBAL.OBJECTS)
+    }
+  };
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
 }
 
 let player = new Player(0, 0),
@@ -748,10 +781,9 @@ spritesheet.onload = function()
 function update()
 {
   ++TIME.frame;
-
-  // ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = GLOBAL.ROOM.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
   let xmove = camera.x,
     ymove = camera.y;
   ctx.translate(-xmove, -ymove);
@@ -774,6 +806,7 @@ function update()
 document.addEventListener('keydown', (key) =>
 {
   const keyName = key.key.toUpperCase();
+  // alert(keyName);
   GLOBAL.KEYS.set(keyName, true);
 });
 
@@ -860,6 +893,7 @@ function loadLevel(level)
     if (!isNaN(params[0])) obj = parseID(params);
     if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
+  new SlideTransition(0, false, 0);
 }
 
 //
@@ -961,40 +995,6 @@ function dist(a, b)
     r.push(Math.pow(a[i] - b[i], 2));
   return Math.sqrt(r.reduce((x, y) => x + y));
 }
-//
-var JSONfn;
-if (!JSONfn)
-{
-  JSONfn = {};
-}
-(function()
-{
-  JSONfn.stringify = function(obj)
-  {
-
-    return (JSONfn.stringifix(JSON.stringify(obj, function(key, value)
-    {
-      return (typeof value === 'function') ?
-        value.toString() : value;
-    })));
-  }
-  JSONfn.parse = function(str)
-  {
-    return JSON.parse(str, function(key, value)
-    {
-      if (typeof value != 'string') return value;
-      return (value.substring(0, 8) == 'function') ?
-        eval('(' + value + ')') : value;
-    });
-  }
-
-
-  JSONfn.stringifix = function(str)
-  {
-    return str.replace(/\\n/g, "").replace(/\\"/g, "\\\"");
-  }
-}());
-
 
 // data section
 // sorry for the mess! :p
