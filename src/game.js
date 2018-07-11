@@ -1,11 +1,3 @@
-/************
-   Controls:
-   
- Z   -   Jump
- X   -   Shoot
- C   -   Reverse gravity
-*************/
-//'use strict';
 var spritesheet = new Image();
 var fontsheet = new Image();
 
@@ -155,7 +147,6 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
     draw: function()
     {
       ctx.fillStyle = "rgb(255,255,255)";
-      //ctx.fillText(`${this.time}\n${this.destroyTime}`, this.x, this.y -64);
       this.sprite.draw(this.x, this.y, this.w, this.h);
     }
   };
@@ -377,9 +368,6 @@ function Enemy(x, y, w, h, sprite)
         if (obj === this) continue;
         if (["Object", "Player", "Enemy"].includes(obj.type))
         {
-
-          //if (boxIntersect(this.x, this.y))
-
           if (boxIntersect(this.x, this.y,
               this.xscale, this.yscale,
               obj.x, obj.y,
@@ -786,7 +774,6 @@ function update()
 document.addEventListener('keydown', (key) =>
 {
   const keyName = key.key.toUpperCase();
-  // alert(keyName);
   GLOBAL.KEYS.set(keyName, true);
 });
 
@@ -843,18 +830,9 @@ function parseID(params)
 
 function loadLevel(level)
 {
-  // note: replace GLOBAL.WEAPONS[<magic number>] with a stored value
-  /*
-  player = new Player(0,0);
-  player.equip(GLOBAL.WEAPONS[0]);
-  player.equip(GLOBAL.WEAPONS[1]);
-  camera =  new Camera(player);
-  GLOBAL.OBJECTS = [player, camera];
-  */
-
   GLOBAL.OBJECTS = [];
   GLOBAL.GRAVITY = 1;
-
+  
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
 
   // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
@@ -870,7 +848,6 @@ function loadLevel(level)
   }
 
   let lvl = level.split('|');
-  debugger;
   for (let i = 0; i < lvl.length; i++)
   {
     let chunk = lvl[i].split(',');
@@ -883,19 +860,6 @@ function loadLevel(level)
     if (!isNaN(params[0])) obj = parseID(params);
     if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
-
-
-  /* 
-  REMOVEME: legacy level loading
-  
-  level = JSONfn.parse(String.raw`${atob(level)}`);
-  
-  
-  for(let i in level.objs)
-  {
-    let obj = level.objs[i];
-    GLOBAL.OBJECTS.push(obj);
-  } */
 }
 
 //
@@ -1042,6 +1006,5 @@ if (!JSONfn)
 
 
   GLOBAL.LEVELS = [
-    `0,0,0|1,0,0|2,0,64,32,32|`
-    ];
+  `0,864,768|1|2,-192,-320,32,32|2,672,800,448,352|2,-160,-320,32,32|2,1120,480,352,672|2,-128,-352,32,32|2,192,480,480,672|2,192,224,1280,256|2,1504,480,32,32|`];
 })();
