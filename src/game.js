@@ -76,7 +76,6 @@ function AnimatedSprite(src, x, y, w, h,
       a.frame++;
       if (a.frame > a.frames)
       {
-
         a.frame = 0;
       }
     }
@@ -368,7 +367,7 @@ function Enemy(x, y, w, h, sprite)
 
         let obj = GLOBAL.OBJECTS[i];
         if (obj === this) continue;
-        if (["Object", "Player", "Enemy"].includes(obj.type))
+        if (["Object", "Player", "Enemy", "Projectile"].includes(obj.type))
         {
 
           //if (boxIntersect(this.x, this.y))
@@ -378,6 +377,10 @@ function Enemy(x, y, w, h, sprite)
               obj.x, obj.y,
               obj.xscale, obj.yscale))
           {
+            switch(obj.type)
+            {
+
+            }
             if (obj.type === "Enemy")
             {
               if (!this.merge) break;
@@ -1006,6 +1009,13 @@ function dot(a, b)
 {
   for (var i = 0, r = []; i < ((a.length <= b.length) ? a.length : b.length); i++)
     r.push(a[i] * b[i]);
+  return r.reduce((x, y) => x + y);
+}
+
+function sqrdist(a, b)
+{
+  for (var i = 0, r = []; i < ((a.length <= b.length) ? a.length : b.length); i++)
+    r.push(Math.pow(a[i] - b[i], 2));
   return r.reduce((x, y) => x + y);
 }
 
