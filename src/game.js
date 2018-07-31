@@ -338,28 +338,39 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
   return a;
 }
 
-function Enemy(x, y, w, h, sprite)
+function Enemy(x, y, w, h, hp, sprite)
 {
   let obj = {
     x: x,
     y: y,
     xscale: w,
     yscale: h,
+    hp: 1,
     sprite: sprite,
     vx: 0,
     vy: 3,
     merge: false,
     type: "Enemy",
 
+    damage: function(dmg, force)
+    {
+      this.hp -= dmg;
+      this.vx -= force;
+      if (this.hp <= 0)
+      {
+        // planned:
+        // flash, smoke, kaboom, raddaradda
+        // for now let's just make it disappear
+        arrayRemove(this, GLOBAL.OBJECTS);
+      }
+    },
+
     update: function()
     {
-
       this.vy += 0.1 * GLOBAL.GRAVITY;
       this.vx += (player.x > this.x) ? 0.01 : -0.01;
-
       for (let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
-
         let obj = GLOBAL.OBJECTS[i];
         if (obj === this) continue;
         if (["Object", "Player", "Enemy", "Projectile"].includes(obj.type))
@@ -376,19 +387,27 @@ function Enemy(x, y, w, h, sprite)
                 break;
 
               case "Object":
-                //if (boxIntersect(this.x, this.y, this.xscale, this.yscale, ))
+                if (boxIntersect(this.x + this.vx, this.y - 6, this.xscale, this.yscale, obj.x, obj.y, obj.xscale, obj.yscale))
+                  this.vx *= -1;
+                break;
+              
+              case "Projectile":
+                this.damage(obj.dmg)
                 break;
 
               case "Enemy":
                 if (!this.merge) break;
                 this.xscale += obj.xscale;
                 this.yscale += obj.yscale;
+                this.hp += obj.hp;
                 arrayRemove(obj, GLOBAL.OBJECTS);
                 break;
 
               default: break;
             }
-            this.vy = 5 * -GLOBAL.GRAVITY;
+            if (boxIntersect(this.x, this.y + this.vy, this.xscale, this.yscale, obj.x, obj.y, obj.xscale, obj.yscale))
+              this.vy = 5 * -GLOBAL.GRAVITY;
+            else this.vy = 5 * GLOBAL.GRAVITY;
           }
         }
       }
@@ -554,7 +573,7 @@ function Player(x, y)
 
       if (keyPressed("B"))
       {
-        new Enemy(this.x, this.y - 128, this.xscale / 2, this.yscale / 2, this.TMPsprite);
+        new Enemy(this.x, this.y - 128, this.xscale / 2, this.yscale / 2, 1, this.TMPsprite);
       }
 
       this.sprite.x = this.facing === 0 ? 0 : this.sprite.w+1;
@@ -884,7 +903,7 @@ function parseID(params)
     case 4:
       break;
     case 5:
-      return new Enemy(params[1], params[2], params[3], params[4], player.TMPsprite);
+      return new Enemy(params[1], params[2], params[3], params[4], 1, player.TMPsprite);
     default:
       console.log(`ERROR: Unknown object found with params ${params}`);
       return null;
