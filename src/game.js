@@ -792,7 +792,7 @@ function EyeGiver(x, y)
   let obj = {
     x: x,
     y: y,
-    scale: 64,
+    scale: 2,
     // animation bits
     start: false,
     timer: 0,
@@ -808,12 +808,13 @@ function EyeGiver(x, y)
         this.animProgress = this.animDuration / this.timer;
       }
 
+      this.draw();
     },
 
     draw: function()
     {
-      ctx.fillStyle = ROOM.color;
-      ctx.arc(x, y, scale * this.animDuration, 0, rad(360), false);
+      ctx.fillStyle = "#FF0000";
+      ctx.arc(x, y, this.scale * this.animProgress, 0, 2 * Math.PI, false);
       ctx.fill();
     }
   }
@@ -974,7 +975,7 @@ function loadLevel(level)
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
     }
   }
-  new EyeGiver(player.x, player.y - 128);
+  new EyeGiver(player.x, player.y - 64);
   
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   player.equip(GLOBAL.WEAPONS[0]);
