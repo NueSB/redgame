@@ -794,7 +794,7 @@ function EyeGiver(x, y)
     y: y,
     scale: 2,
     // animation bits
-    start: false,
+    start: true,
     timer: 0,
     animDuration: 120,
     animProgress: 0,
@@ -805,7 +805,7 @@ function EyeGiver(x, y)
       if (this.start === true)
       {
         this.timer = min(this.animDuration, this.timer+1);
-        this.animProgress = this.animDuration / this.timer;
+        this.animProgress = this.timer / this.animDuration;
       }
 
       this.draw();
@@ -814,7 +814,7 @@ function EyeGiver(x, y)
     draw: function()
     {
       ctx.fillStyle = "#FF0000";
-      ctx.arc(x, y, this.scale * this.animProgress, 0, 2 * Math.PI, false);
+      ctx.arc(this.x, this.y, this.scale * this.animProgress, 0, 2 * Math.PI, false);
       ctx.fill();
     }
   }
