@@ -405,9 +405,9 @@ function Enemy(x, y, w, h, hp, sprite)
 
               default: break;
             }
-            if (boxIntersect(this.x, this.y + this.vy, this.xscale, this.yscale, obj.x, obj.y, obj.xscale, obj.yscale))
-              this.vy = 5 * -GLOBAL.GRAVITY;
-            else this.vy = 5 * GLOBAL.GRAVITY;
+            let x = -1;
+            if (boxIntersect(this.x, this.y-this.vy, 1, this.yscale, obj.x, obj.y, obj.xscale, obj.yscale)) x = 1;
+            this.vy = 5 * GLOBAL.GRAVITY * x;
           }
         }
       }
@@ -753,7 +753,6 @@ function Camera(target)
   };
 }
 
-
 function SlideTransition(speed, out, lvl)
 {
   let obj = {
@@ -784,6 +783,40 @@ function SlideTransition(speed, out, lvl)
       else if (!this.out && this.w < 0) arrayRemove(this, GLOBAL.OBJECTS)
     }
   };
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
+function EyeGiver(x, y)
+{
+  let obj = {
+    x: x,
+    y: y,
+    scale: 64,
+    // animation bits
+    start: false,
+    timer: 0,
+    animDuration: 120,
+    animProgress: 0,
+
+
+    update: function()
+    {
+      if (this.start === true)
+      {
+        this.timer = min(this.animDuration, this.timer+1);
+        this.animProgress = this.animDuration / this.timer;
+      }
+
+    },
+
+    draw: function()
+    {
+      ctx.fillStyle = ROOM.color;
+      ctx.arc(x, y, scale * this.animDuration, 0, rad(360), false);
+      ctx.fill();
+    }
+  }
   GLOBAL.OBJECTS.push(obj);
   return obj;
 }
@@ -870,7 +903,7 @@ document.addEventListener('keyup', (key) =>
 // levels, saves, etc
 //
 
-/***********
+/****************\
     IDS:
 0 - Player
 1 - Camera
@@ -878,12 +911,12 @@ document.addEventListener('keyup', (key) =>
 3 - TestPistol
 4 - PestTistol
 5 - (generic) Enemy
+6 - EyeGiver
 
 Params:
  0  1  2  3  4
 id, x, y, w, h
-
-************/
+/******************/
 
 
 function parseID(params)
@@ -915,20 +948,6 @@ function loadLevel(level)
 {
   GLOBAL.OBJECTS = [];
   GLOBAL.GRAVITY = 1;
-  
-  player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
-
-  // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
-  for (let i = 0; i < GLOBAL.WEAPONS.length; i++)
-  {
-    let wep = GLOBAL.WEAPONS[i];
-    if (wep.owner != null && wep.owner.type === "Player")
-    {}
-    if (wep.projectile.sprite.type === "AnimatedSprite")
-    {
-      GLOBAL.OBJECTS.push(wep.projectile.sprite);
-    }
-  }
 
   let lvl = level.split('|');
   for (let i = 0; i < lvl.length; i++)
@@ -943,6 +962,22 @@ function loadLevel(level)
     if (!isNaN(params[0])) obj = parseID(params);
     if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
+  
+  // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
+  for (let i = 0; i < GLOBAL.WEAPONS.length; i++)
+  {
+    let wep = GLOBAL.WEAPONS[i];
+    if (wep.owner != null && wep.owner.type === "Player")
+    {}
+    if (wep.projectile.sprite.type === "AnimatedSprite")
+    {
+      GLOBAL.OBJECTS.push(wep.projectile.sprite);
+    }
+  }
+  new EyeGiver(player.x, player.y - 128);
+  
+  player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
+  player.equip(GLOBAL.WEAPONS[0]);
   new SlideTransition(0, false, 0);
 }
 
