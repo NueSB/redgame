@@ -792,7 +792,7 @@ function EyeGiver(x, y)
   let obj = {
     x: x,
     y: y,
-    scale: 2,
+    scale: 64,
     // animation bits
     start: true,
     timer: 0,
@@ -813,8 +813,9 @@ function EyeGiver(x, y)
 
     draw: function()
     {
-      ctx.fillStyle = "#FF0000";
-      ctx.arc(this.x, this.y, this.scale * this.animProgress, 0, 2 * Math.PI, false);
+      ctx.fillStyle = GLOBAL.ROOM.color;
+      ctx.beginPath();
+      ctx.arc(this.x+0.5, this.y+0.5, this.scale * this.animProgress, 0, 2 * Math.PI, false);
       ctx.fill();
     }
   }
