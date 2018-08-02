@@ -320,8 +320,6 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
 
           let t = new Projectile(x, y, w, h, spd, direction, sprite, destructTime);
           t.update = p.update;
-
-
         }
       }
       this.draw();
@@ -792,30 +790,45 @@ function EyeGiver(x, y)
   let obj = {
     x: x,
     y: y,
-    scale: 64,
+    scale: 256,
     // animation bits
     start: true,
-    timer: 0,
-    animDuration: 120,
+    timer: 1,
+    animDuration: 170,
     animProgress: 0,
+    eye: {
+      x: x,
+      y: y,
+      scale: 128,
+
+      draw: function(progress, timer)
+      {
+        let size = this.scale * Easings.easeInOutCubic(progress);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(this.x + Math.sin(size * 3 * Math.PI/180) * size, this.y + Math.cos(size * 3 * Math.PI/180) * size, size, 0, 2 * Math.PI, false);
+        ctx.fill();
+      }
+    },
 
 
     update: function()
     {
       if (this.start === true)
       {
-        this.timer = min(this.animDuration, this.timer+1);
+        this.timer = min(this.animDuration, this.timer + 1);
         this.animProgress = this.timer / this.animDuration;
       }
 
       this.draw();
+      this.eye.draw(this.animProgress, this.timer);
     },
 
     draw: function()
     {
       ctx.fillStyle = GLOBAL.ROOM.color;
       ctx.beginPath();
-      ctx.arc(this.x+0.5, this.y+0.5, this.scale * this.animProgress, 0, 2 * Math.PI, false);
+      ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
       ctx.fill();
     }
   }
@@ -1089,6 +1102,32 @@ function dist(a, b)
     r.push(Math.pow(a[i] - b[i], 2));
   return Math.sqrt(r.reduce((x, y) => x + y));
 }
+
+var Easings = {
+  easeInQuad: function (t) { return t*t },
+  // decelerating to zero velocity
+  easeOutQuad: function (t) { return t*(2-t) },
+  // acceleration until halfway, then deceleration
+  easeInOutQuad: function (t) { return t<.5 ? 2*t*t : -1+(4-2*t)*t },
+  // accelerating from zero velocity 
+  easeInCubic: function (t) { return t*t*t },
+  // decelerating to zero velocity 
+  easeOutCubic: function (t) { return (--t)*t*t+1 },
+  // acceleration until halfway, then deceleration 
+  easeInOutCubic: function (t) { return t<.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1 },
+  // accelerating from zero velocity 
+  easeInQuart: function (t) { return t*t*t*t },
+  // decelerating to zero velocity 
+  easeOutQuart: function (t) { return 1-(--t)*t*t*t },
+  // acceleration until halfway, then deceleration
+  easeInOutQuart: function (t) { return t<.5 ? 8*t*t*t*t : 1-8*(--t)*t*t*t },
+  // accelerating from zero velocity
+  easeInQuint: function (t) { return t*t*t*t*t },
+  // decelerating to zero velocity
+  easeOutQuint: function (t) { return 1+(--t)*t*t*t*t },
+  // acceleration until halfway, then deceleration 
+  easeInOutQuint: function (t) { return t<.5 ? 16*t*t*t*t*t : 1+16*(--t)*t*t*t*t }
+};
 
 // data section
 // sorry for the mess! :p
