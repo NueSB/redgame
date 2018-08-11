@@ -731,11 +731,15 @@ function Camera(target)
   return {
     x: 0,
     y: 0,
+    offsetX: 0,
+    offsetY: 0,
+    lerpspeed: 0.7,
+    target: target,
     type: "Camera",
     update: function()
     {
-      this.x = (target.x - canvas.width / 2) * 0.99;
-      this.y = (target.y - canvas.height / 2) * 0.99;
+      this.x = clamp(lerp(this.x, this.target.x - canvas.width/2 + this.offsetX, this.lerpspeed), 0, 100000);
+      this.y = clamp(lerp(this.y, this.target.y - canvas.height/2 + this.offsetY, this.lerpspeed), 0, 100000);
     },
 
     drawGUI: function(x, y)
@@ -745,7 +749,12 @@ function Camera(target)
       if (target.type === "Player") ctx.fillRect(x + 3, y + 1, 73 * (target.hp / 3)-5, 6);
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
+        if (GLOBAL.OBJECTS[i].type === "EyeGiver") 
+        {          
+          this.offsetY = -50; // not final. needs to be smoother
+        }
         if (GLOBAL.OBJECTS[i].type === "Transition") GLOBAL.OBJECTS[i].draw();
+
       }
     }
   };
@@ -790,23 +799,24 @@ function EyeGiver(x, y)
   let obj = {
     x: x,
     y: y,
-    scale: 128,
+    scale: 64,
     // animation bits
     start: true,
     timer: 1,
     animDuration: 170,
     animProgress: 0,
+    type: "EyeGiver",
     eye: {
       x: x,
       y: y,
-      scale: 64,
+      scale: 32,
 
       draw: function(progress, timer)
       {
         let size = this.scale * Easings.easeInOutCubic(progress);
         ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
-        ctx.arc(this.x + Math.sin(size * 3 * Math.PI/180) * size, this.y + Math.cos(size * 3 * Math.PI/180) * size, size, 0, 2 * Math.PI, false);
+        ctx.arc(this.x + Math.sin(size * 2.5 * Math.PI/180) * size, this.y + Math.cos(size * 3 * Math.PI/180) * size, size, 0, 2 * Math.PI, false);
         ctx.fill();
       }
     },
@@ -990,7 +1000,7 @@ function loadLevel(level)
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
     }
   }
-  new EyeGiver(player.x, player.y - 256);
+  new EyeGiver(player.x, player.y - 128);
   
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   player.equip(GLOBAL.WEAPONS[0]);
