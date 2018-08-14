@@ -8,6 +8,7 @@
 
 <body>
   <canvas id='c' width="360" height="240"></canvas>
+  <canvas id='t' width=0 height=0 style="display:none;"></canvas>
 
   <p>test</p>
   <script type='text/javascript' src="src/game.js"></script>
@@ -16,9 +17,12 @@
         background-color: #000000;
       }
 
-      canvas {
-        width: 720px;
+      #c {
+       width: 720px;
         height: 480px;
+      }
+      
+      canvas {
         position: absolute;
         outline: 1px solid white;
         top: 0;
