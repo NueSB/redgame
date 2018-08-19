@@ -178,7 +178,7 @@ function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
             obj.x, obj.y,
             obj.xscale, obj.yscale))
         {
-          arrayRemove(this, GLOBAL.OBJECTS);
+          this.spd = 0;
         }
       }
     }
@@ -228,7 +228,7 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
             obj.x, obj.y,
             obj.xscale, obj.yscale))
         {
-          arrayRemove(this, GLOBAL.OBJECTS);
+          this.spd *= -1;
         }
       }
     }
@@ -463,8 +463,8 @@ function Player(x, y)
     hp: 3,
     sprite: new Sprite(playersheet, 0, 41, 10, 18),
     TMPsprite: new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0, true),
-    walkSprite: new AnimatedSprite(playersheet, 1, 0, 12, 20, 0, 5, 7, 0, true),
-    walkSpriteB: new AnimatedSprite(playersheet, 72, 0, 12, 20, 0, 5, 7, 0, true),
+    walkSprite: new AnimatedSprite(playersheet, 1, 0, 12, 20, 0, 5, 4, 0, true),
+    walkSpriteB: new AnimatedSprite(playersheet, 72, 0, 12, 20, 0, 5, 4, 0, true),
     weapon: null,
     weaponIndex: 0,
     weapons: [],
@@ -1019,7 +1019,7 @@ function loadLevel(level)
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
     }
   }
-  new EyeGiver(player.x, player.y - 128);
+  new EyeGiver(player.x, player.y - 64);
   
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   player.equip(GLOBAL.WEAPONS[0]);
