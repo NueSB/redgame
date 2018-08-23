@@ -201,8 +201,9 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
     if (!this.run)
     {
       this.run = true;
-      this.x += Math.random() * 20;
-      this.y += (Math.random() - 0.5) * 40;
+      this.y += Math.random() * (10 - -10) + -10;
+      this.x += Math.random() * (10 - -10) + -10;
+      this.angle += Math.random() * (10 - -10) + -10;
     }
     this.time++;
     if (this.time >= this.destroyTime) arrayRemove(this, GLOBAL.OBJECTS);
@@ -812,17 +813,30 @@ function EyeGiver(x, y)
       x: x,
       y: y,
       scale: 48,
+      parent: null,
+      centerScale: 16,
 
       draw: function(progress, timer)
       {
         let size = this.scale * Easings.easeInOutCubic(progress);
         ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
-        ctx.arc(this.x + Math.sin(size * 14  * Math.PI/180) * size/3, this.y + Math.cos(size * 14 * Math.PI/180) * size/3, size, 0, 2 * Math.PI, false);
+        if (progress < 1) ctx.arc(this.x + Math.sin(size * 14  * Math.PI/180) * size/3, this.y + Math.cos(size * 14 * Math.PI/180) * size/3, size, 0, 2 * Math.PI, false);
+        else {
+          this.x = player.x,
+          this.y = player.y;
+
+          let distance = dist([this.x, this.y], [this.parent.x, this.parent.y]);
+          if (distance > this.parent.scale - this.centerScale * 2)
+          {
+            this.x = this.parent.x + ((this.x - this.parent.x) * (this.centerScale / distance));
+            this.y = this.parent.y + ((this.y - this.parent.y) * (this.centerScale / distance));
+          }
+          ctx.arc(this.x, this.y, size, 0, 2 * Math.PI, false);
+        }
         ctx.fill();
       }
     },
-
 
     update: function()
     {
@@ -844,6 +858,8 @@ function EyeGiver(x, y)
       ctx.fill();
     }
   }
+
+  obj.eye.parent = obj;
   GLOBAL.OBJECTS.push(obj);
   return obj;
 }
