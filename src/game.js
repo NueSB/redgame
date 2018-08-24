@@ -99,7 +99,7 @@ function AnimatedSprite(src, x, y, w, h,
 
 function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
 {
-  var a = {
+  let a = {
     x: x,
     y: y,
     w: w,
@@ -108,39 +108,50 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
     angle: dir,
     sprite: sprite,
     time: 0,
+    collisionObjects: ["Object"],
     destroyTime: destructTime,
     type: "Projectile",
+
+    onCollision: function()
+    {
+      arrayRemove(this);
+    },
+        
+    cUpdate: function()
+    {
+
+    },
 
     update: function()
     {
       this.time++;
+      this.cUpdate();
       if (this.time >= this.destroyTime)
       {
         if (this.sprite.type === "AnimatedSprite") arrayRemove(this.sprite, GLOBAL.OBJECTS);
         arrayRemove(this, GLOBAL.OBJECTS);
       }
 
-
       for (let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
         let obj = GLOBAL.OBJECTS[i];
-        if (obj.type === "Object")
+        if (obj.type in this.collisionObjects)
         {
-
-          if (boxIntersect(this.x + speed * Math.cos(this.angle * Math.PI / 180),
-              this.y + speed * Math.cos(this.angle * Math.PI / 180),
+          if (boxIntersect(this.x + this.spd * Math.cos(this.angle * Math.PI / 180),
+              this.y + this.spd * Math.cos(this.angle * Math.PI / 180),
               this.w, this.h,
               obj.x, obj.y,
               obj.xscale, obj.yscale))
           {
-            arrayRemove(this, GLOBAL.OBJECTS);
+            this.onCollision(obj);
           }
         }
       }
-      this.x += speed * Math.sin(this.angle * Math.PI / 180);
-      this.y += speed * Math.cos(this.angle * Math.PI / 180);
+      this.x += this.spd * Math.sin(this.angle * Math.PI / 180);
+      this.y += this.spd * Math.cos(this.angle * Math.PI / 180);
       this.draw();
     },
+
 
     draw: function()
     {
@@ -151,42 +162,26 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
   };
 
   GLOBAL.OBJECTS.push(a);
-
   return a;
 }
 
 function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 {
-  var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
-  a.type = "Object";
-  a.origSpd = speed;
-  a.update = function()
-  {
-    this.time++;
-    if (this.time >= this.destroyTime) arrayRemove(this, GLOBAL.OBJECTS);
-    if (this.time > 25) this.spd *= 0.75;
-    // this.w *= this.spd / this.origSpd;
-    for (let i = 1; i < GLOBAL.OBJECTS.length; i++)
-    {
-      let obj = GLOBAL.OBJECTS[i];
-      if (obj.type === "Object")
-      {
+  let a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
+  a.collisionObjects = ["Object"];
 
-        if (boxIntersect(this.x + this.spd * Math.cos(this.angle * Math.PI / 180),
-            this.y + this.spd * Math.cos(this.angle * Math.PI / 180),
-            this.w, this.h,
-            obj.x, obj.y,
-            obj.xscale, obj.yscale))
-        {
-          this.spd = 0;
-        }
-      }
-    }
-    this.x += this.spd * Math.sin(this.angle * Math.PI / 180);
-    this.y += this.spd * Math.cos(this.angle * Math.PI / 180);
-    this.draw();
+  a.onCollision = function()
+  {
+    
   }
 
+  a.cUpdate = function()
+  {
+    if (this.time > 25)
+    {
+      this.spd *= 0.99;
+    }
+  };
   return a;
 }
 
@@ -322,7 +317,9 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
             destructTime = p.destroyTime;
 
           let t = new Projectile(x, y, w, h, spd, direction, sprite, destructTime);
-          t.update = p.update;
+          t.cUpdate = p.cUpdate;
+          console.log(t.cUpdate);
+          t.onCollision = p.onCollision;
         }
       }
       this.draw();
@@ -842,7 +839,7 @@ function EyeGiver(x, y)
     {
       if (this.start === true)
       {
-        this.timer = min(this.animDuration, this.timer + 1);
+        this.timer = min(this.animDuration, this.timer + 0.5);
         this.animProgress = this.timer / this.animDuration;
       }
 
@@ -864,13 +861,45 @@ function EyeGiver(x, y)
   return obj;
 }
 
+function GuardEye(x, y, w, h)
+{
+  let obj = {
+    x: x,
+    y: y,
+    xscale: w,
+    yscale: h,
+    type: "GuardEye",
+    hp: 20,
+    update: function()
+    {
+      for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
+      {
+        let obj = GLOBAL.OBJECTS[i];
+        if (boxIntersect(this.x, this.y, this.xscale, this.yscale, obj.x, obj.y, obj.xscale, obj.yscale))
+        {
+
+        }
+      }
+      this.draw();
+    },
+
+    draw: function()
+    {
+      ctx.fillStyle = GLOBAL.ROOM.color;
+      ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+    }
+  }
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
 let player = new Player(0, 0),
   camera = new Camera(player);
 
 GLOBAL.WEAPONS = [
   new Weapon("testpistol", null, true, 5, [0, 0], 1,
     new TestPistolProjectile(0, 0, 10, 10, 5, 0,
-      new Sprite(spritesheet, 0, 21, 8, 4), 600),
+      new Sprite(spritesheet, 0, 21, 8, 4), 100),
     new Sprite(spritesheet, 10, 22, 10, 6),
     1, 0),
   new Weapon("pesttistol", null, false, 5, [0, 0], 6,
@@ -987,6 +1016,11 @@ function parseID(params)
       break;
     case 5:
       return new Enemy(params[1], params[2], params[3], params[4], 1, player.TMPsprite);
+    case 6: 
+      return new EyeGiver(params[1], params[2]);
+    case 7:
+      return new GuardEye(params[1], params[2], params[3], params[4]);
+
     default:
       console.log(`ERROR: Unknown object found with params ${params}`);
       return null;
@@ -1008,8 +1042,11 @@ function loadLevel(level)
   GLOBAL.GRAVITY = 1;
 
   level = level.split('---');
-  let lvl = level[0].split('|');
-  let tiles = level[1].split('|');
+  let settings = level[0].split('|');
+  let lvl = level[1].split('|');
+  let tiles = level[2].split('|');
+
+  GLOBAL.ROOM.color = settings[0]; GLOBAL.ROOM.width = settings[1]; GLOBAL.ROOM.height = settings[2]; 
 
   for (let i = 0; i < lvl.length; i++)
   {
@@ -1035,7 +1072,6 @@ function loadLevel(level)
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
     }
   }
-  new EyeGiver(player.x, player.y - 64);
   
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   player.equip(GLOBAL.WEAPONS[0]);
@@ -1207,5 +1243,5 @@ var Easings = {
   playersheet.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJIAAABSCAYAAAC/k406AAAETElEQVR4Xu2c4bKbIBCF4/O20z5LO+3z2km8WoMIe3AloF/+dDrZrGfPfhAgXoeHw2scx/GZZhiG4flv+P/wEmq8KvHs/BY9qgY13qJhHXN2/lfjj75UkWq8qk/Nr8Zb9Kg51XiLhiMgqXqiIFmTzHF7Rc0z1Py+Gh9+LjfjnZnf6klprar2Wnpyns/13hokpXm1GqcOSmujlVrXyxOrnjeQzr5Yz/l71l4ChlovICUWG+uvZtXYu8UDEiC9HDi6ngUkQAKko6NI+fpRYmusSVrTw4zEjPS5GSk3GpazheCkO3eIVjrDqHpKznpy11C1H/Xo03rCet9+0rA2OlfEUZPURtfQc/Y1vPPXBrtJkLxN9QC7NU2t6QEkpzXSUVhbA0PV4wfS8HPycvy1tCY8vv/4V+ffL4nfckqm95UDySRIEW+qgVdYc18gBQYfBi/RsBcYhaZatvNuIOVqUDcwuZqderCdkQyjJzqe/0z3JD2+T/ckWV7j48d0H9Pjt3QMETZtWZzv5Au1LKMt17RnE77qiY7QxCz8dk3Bmz1PdmvIGB0uujd5Yp79Gcdxb9beAW/bwFKQLOQYY9Rp1Zh2E5ZsWtD8HEi5hpVq3PvcqR4lwN/zLD17CCPJ26h1PusoPVPDkrsRT0wzSxVDposAkmo2IEUdAyRAUh0AJBfHmJHyIL0WcCy2J6NYbEd34MnF9tsOoBSkgpHK9n87uK0bC69dW/R6pdt/VVRuKzzbkz1gdDoMk86FnofvLZ9s5862ujmQTCwkkmDwE8m0DY412jDLuwzmSO9KT/NVPX6/tcWKUEdPo/HP0lRj7xYPSIYZGJD2TZpn4CZBmmXnRnV2DRbUXxrfI0gfubGtxcZZmncEDCW/GmuJN29ICgfD2SBFb7VVQbpjvHV2vKM3r03GGnjMeh/+yo1t6gxwtXhAclpsXw0MdVIBJEB6O/8q/WoGJEACpJpfJ+pUf7d4HrQlzkitPNhqBrUVPbcGKVwPpJrSWuNq6bGCav6Lj8TA3TzFNiwy/KxqQurasffU/Gq8RY+aU423aIgd7VjBUPUAktoRY7zaCDXeKGMJOzu/C0hqUcRfz4ENSClyz6b6evbepyJAuk+vT610Acly7mGJOVUtyZt1AJCabU1fwgCpr341qxaQmm1NX8IAqa9+NasWkJptTV/CAKmvfjWrFpCabU1fwobc2dBczvPHPiW2LxtQe9QBCQ5AOmr3dT8PSNftbdXKAKmq3de9GCBdt7dVKwOkqnZf92L/t/97DztfP4lt56ls1qeMXddGKgMkGHBxAJBcbCQJIMGAiwP8ROJiI0nYtcGAiwOA5GIjSQAJBlwcACQXG0kCSDDg4gAgudhIErb/MODiACC52EgSQIIBFwcAycVGkgASDLg4AEguNpKE5yPBgIsDgORiI0l4hiQMuDgASC42kgSQYMDFAUBysZEkgAQDLg4AkouNJPkHyUSey4N2CM0AAAAASUVORK5CYII=";
   tilesheet.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABD0lEQVRoBe1aQQ7CMAxrJ/7/5aBUGAWtFzMh4sm7BCpc2bF9YnOMEUP4eST3CE0Nc85xCC9/UV8OQEQqUnhqYuQdWAJUNl/TAc4zIgJf6g8UPmeUThGq+YKIX59duf/tQF6i4gS45jw5gK2rzPsIQHyu5PFbLIsD10yJO/DvrrgD1QE2y8CyOHcAm+sw3YHqAptlYFmcO4DNdZjuQHWBzTKwLM4dwOY6THegusBmGVgW5w5gcx2mO1BdYLMMLItzB7C5DtMdqC6wWQaWxbkD2FyH6Q5UF9gsA8vith3AZUozhR9Qs9tCVzHgmtxXB3DQlfCOFzjfp8Q7lQpnH//UwxYF4uAoH6F8OULzVZWXBU833396hhaRdwAAAABJRU5ErkJggg==";
 
-  GLOBAL.LEVELS = [`0,640,480|1|2,520,640,240,640---0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
+  GLOBAL.LEVELS = [`#FFAAFF|360|240|---|0,0,0|1|7,300,60,16,128|2,0,140,40,320|2,0,140,70,30|---`,`#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })();
