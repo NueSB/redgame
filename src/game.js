@@ -1,6 +1,7 @@
 var spritesheet = new Image();
 var playersheet = new Image();
 var tilesheet = new Image();
+var enemysheet = new Image();
 
 //
 // game
@@ -872,6 +873,7 @@ function GuardEye(x, y, w, h)
     ogY: y,
     xscale: w,
     yscale: h,
+    sprite: new Sprite(enemysheet, 0, 0, 76, 172),
     dFlash: {
       amt: 60,
       current: 0,
@@ -885,7 +887,13 @@ function GuardEye(x, y, w, h)
     {
       this.hp -= amt;
       this.dFlash.current = this.dFlash.amt;
-      this.dFlash.shakeCur = this.dFlash.shakeAmt; 
+      this.dFlash.shakeCur = this.dFlash.shakeAmt;
+      for(let i = 0; i < 20; i++)
+      {
+        let b = GLOBAL.WEAPONS[0].projectile;
+        new Projectile(this.x, this.y + this.yscale/2, b.w, b.h, randrange(1,4), randrange(90, 360), b.sprite, randrange(60,75));
+        // needs smoke sprites
+      }
       if (this.hp <= 0)
       {
         this.die();
@@ -894,6 +902,12 @@ function GuardEye(x, y, w, h)
 
     die: function()
     {
+      for(let i = 0; i < 60; i++)
+      {
+        let b = GLOBAL.WEAPONS[0].projectile;
+        new Projectile(this.x, this.y + this.yscale/2, b.w, b.h, randrange(4,20), randrange(0, 360), b.sprite, randrange(60,75));
+        
+      }
       arrayRemove(this, GLOBAL.OBJECTS);
     },
 
@@ -916,9 +930,9 @@ function GuardEye(x, y, w, h)
     {
       if (this.dFlash.current > 0) 
       {
-        ctx.fillStyle = "#FFFFFF";
-      } else ctx.fillStyle = GLOBAL.ROOM.color; 
-      ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+        this.sprite.x = 76;
+      } else this.sprite.x = 0; 
+      this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
       
     }
   }
@@ -957,6 +971,11 @@ spritesheet.onload = function()
     }
   }
 };
+
+enemysheet.onload = function() 
+{
+  console.log("a");
+}
 
 // main loop //
 
@@ -1277,9 +1296,9 @@ var Easings = {
 
 (function()
 {
-  spritesheet.src = "data:image/png;base64,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";
-  playersheet.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJIAAABSCAYAAAC/k406AAAETElEQVR4Xu2c4bKbIBCF4/O20z5LO+3z2km8WoMIe3AloF/+dDrZrGfPfhAgXoeHw2scx/GZZhiG4flv+P/wEmq8KvHs/BY9qgY13qJhHXN2/lfjj75UkWq8qk/Nr8Zb9Kg51XiLhiMgqXqiIFmTzHF7Rc0z1Py+Gh9+LjfjnZnf6klprar2Wnpyns/13hokpXm1GqcOSmujlVrXyxOrnjeQzr5Yz/l71l4ChlovICUWG+uvZtXYu8UDEiC9HDi6ngUkQAKko6NI+fpRYmusSVrTw4zEjPS5GSk3GpazheCkO3eIVjrDqHpKznpy11C1H/Xo03rCet9+0rA2OlfEUZPURtfQc/Y1vPPXBrtJkLxN9QC7NU2t6QEkpzXSUVhbA0PV4wfS8HPycvy1tCY8vv/4V+ffL4nfckqm95UDySRIEW+qgVdYc18gBQYfBi/RsBcYhaZatvNuIOVqUDcwuZqderCdkQyjJzqe/0z3JD2+T/ckWV7j48d0H9Pjt3QMETZtWZzv5Au1LKMt17RnE77qiY7QxCz8dk3Bmz1PdmvIGB0uujd5Yp79Gcdxb9beAW/bwFKQLOQYY9Rp1Zh2E5ZsWtD8HEi5hpVq3PvcqR4lwN/zLD17CCPJ26h1PusoPVPDkrsRT0wzSxVDposAkmo2IEUdAyRAUh0AJBfHmJHyIL0WcCy2J6NYbEd34MnF9tsOoBSkgpHK9n87uK0bC69dW/R6pdt/VVRuKzzbkz1gdDoMk86FnofvLZ9s5862ujmQTCwkkmDwE8m0DY412jDLuwzmSO9KT/NVPX6/tcWKUEdPo/HP0lRj7xYPSIYZGJD2TZpn4CZBmmXnRnV2DRbUXxrfI0gfubGtxcZZmncEDCW/GmuJN29ICgfD2SBFb7VVQbpjvHV2vKM3r03GGnjMeh/+yo1t6gxwtXhAclpsXw0MdVIBJEB6O/8q/WoGJEACpJpfJ+pUf7d4HrQlzkitPNhqBrUVPbcGKVwPpJrSWuNq6bGCav6Lj8TA3TzFNiwy/KxqQurasffU/Gq8RY+aU423aIgd7VjBUPUAktoRY7zaCDXeKGMJOzu/C0hqUcRfz4ENSClyz6b6evbepyJAuk+vT610Acly7mGJOVUtyZt1AJCabU1fwgCpr341qxaQmm1NX8IAqa9+NasWkJptTV/CAKmvfjWrFpCabU1fwobc2dBczvPHPiW2LxtQe9QBCQ5AOmr3dT8PSNftbdXKAKmq3de9GCBdt7dVKwOkqnZf92L/t/97DztfP4lt56ls1qeMXddGKgMkGHBxAJBcbCQJIMGAiwP8ROJiI0nYtcGAiwOA5GIjSQAJBlwcACQXG0kCSDDg4gAgudhIErb/MODiACC52EgSQIIBFwcAycVGkgASDLg4AEguNpKE5yPBgIsDgORiI0l4hiQMuDgASC42kgSQYMDFAUBysZEkgAQDLg4AkouNJPkHyUSey4N2CM0AAAAASUVORK5CYII=";
-  tilesheet.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABD0lEQVRoBe1aQQ7CMAxrJ/7/5aBUGAWtFzMh4sm7BCpc2bF9YnOMEUP4eST3CE0Nc85xCC9/UV8OQEQqUnhqYuQdWAJUNl/TAc4zIgJf6g8UPmeUThGq+YKIX59duf/tQF6i4gS45jw5gK2rzPsIQHyu5PFbLIsD10yJO/DvrrgD1QE2y8CyOHcAm+sw3YHqAptlYFmcO4DNdZjuQHWBzTKwLM4dwOY6THegusBmGVgW5w5gcx2mO1BdYLMMLItzB7C5DtMdqC6wWQaWxbkD2FyH6Q5UF9gsA8vith3AZUozhR9Qs9tCVzHgmtxXB3DQlfCOFzjfp8Q7lQpnH//UwxYF4uAoH6F8OULzVZWXBU833396hhaRdwAAAABJRU5ErkJggg==";
-
-  GLOBAL.LEVELS = [`#FFAAFF|360|240|---|0,20,90|1|7,300,60,16,128|2,0,40,70,20|2,0,0,40,60|2,0,140,40,320|2,0,140,70,30|2,300,170,70,30|2,300,40,70,30|---`,`#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
+  spritesheet.src = "src/data/spritesheet.png";
+  playersheet.src = "src/data/playersheet.png";
+  enemysheet.src = "src/data/enemysheet.png";
+  tilesheet.src = "src/data/tilesheet.png";
+  GLOBAL.LEVELS = [`#6A00FF|360|240|---|0,20,90|1|7,290,30,16,128|2,0,40,70,20|2,0,0,40,60|2,0,140,40,320|2,0,140,70,30|2,300,170,70,300|2,300,0,70,70|---`,`#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })();
