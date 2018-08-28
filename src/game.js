@@ -1,7 +1,9 @@
-var spritesheet = new Image();
-var playersheet = new Image();
-var tilesheet = new Image();
-var enemysheet = new Image();
+var spritesheet = new Image(),
+    playersheet = new Image(),
+    tilesheet = new Image(),
+    enemysheet = new Image(),
+    bgsheet = new Image(),
+    loadProgress = 0;
 
 //
 // game
@@ -23,7 +25,8 @@ var GLOBAL = {
     width: 1280,
     height: 720,
     color: "#AA11FF",
-    bg: "#000000",
+    bgColor: "",
+    bg: document.querySelector('#bg'),
     tilemap: document.querySelector('#t')
   }
 };
@@ -959,23 +962,23 @@ GLOBAL.WEAPONS = [
 ];
 
 // init //
+function incLoader()
+{
+  loadProgress++;
+  if (loadProgress >= 5) update();
+}
+
 spritesheet.onload = function()
 {
   ctx.imageSmoothingEnabled = false;
   loadLevel(GLOBAL.LEVELS[0]);
-  playersheet.onload = function()
-  {
-    tilesheet.onload = function()
-    {
-      update();
-    }
-  }
+  GLOBAL.ROOM.bg.imageSmoothingEnabled = false;
+  incLoader();
 };
-
-enemysheet.onload = function() 
-{
-  console.log("a");
-}
+bgsheet.onload = incLoader();
+playersheet.onload = incLoader();
+enemysheet.onload = incLoader();
+tilesheet.onload = incLoader();
 
 // main loop //
 
@@ -991,12 +994,13 @@ enemysheet.onload = function()
 function update()
 {
   ++TIME.frame;
-  ctx.fillStyle = GLOBAL.ROOM.bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   let xmove = camera.x,
       ymove = camera.y;
-      
+    
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  ctx.drawImage(GLOBAL.ROOM.bg, 0, 0, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height, 0, 0, canvas.width, canvas.height);
+
   ctx.translate(-xmove, -ymove);
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
@@ -1008,8 +1012,6 @@ function update()
   {
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
-
-
 
   camera.drawGUI(xmove, ymove);
   ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, GLOBAL.ROOM.width, GLOBAL.ROOM.height, xmove, ymove, GLOBAL.ROOM.width, GLOBAL.ROOM.height);
@@ -1098,7 +1100,8 @@ function loadLevel(level)
   let lvl = level[1].split('|');
   let tiles = level[2].split('|');
 
-  GLOBAL.ROOM.color = settings[0]; GLOBAL.ROOM.width = settings[1]; GLOBAL.ROOM.height = settings[2]; 
+  loadBG(settings[0]);
+  GLOBAL.ROOM.color = settings[1]; GLOBAL.ROOM.width = settings[2]; GLOBAL.ROOM.height = settings[3]; 
 
   for (let i = 0; i < lvl.length; i++)
   {
@@ -1131,6 +1134,21 @@ function loadLevel(level)
   new SlideTransition(0, false, 0);
 
   loadTileMap(tiles);
+}
+
+function loadBG(index)
+{
+  bgctx =  GLOBAL.ROOM.bg.getContext('2d');
+  if(index[0] === "#") 
+  {
+    GLOBAL.ROOM.bgColor = index;
+    bgctx.fillStyle = index;
+    bgctx.fillRect(0, 0, bg.width, bg.height);
+  } else
+  {
+    bgctx.drawImage(bgsheet, GLOBAL.ROOM.bg.width * index, GLOBAL.ROOM.bg.height * index, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height,
+                    0, 0, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height);
+  }
 }
 
 function loadTileMap(tilemap)
@@ -1300,5 +1318,6 @@ var Easings = {
   playersheet.src = "src/data/playersheet.png";
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
-  GLOBAL.LEVELS = [`#6A00FF|360|240|---|0,20,90|1|7,290,30,16,128|2,0,40,70,20|2,0,0,40,60|2,0,140,40,320|2,0,140,70,30|2,300,170,70,300|2,300,0,70,70|---`,`#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
+  bgsheet.src = "src/data/bgsheet.png";
+  GLOBAL.LEVELS = [`0|#6A00FF|360|240|---|0,20,90|1|7,290,30,16,128|2,0,40,70,20|2,0,0,40,60|2,0,140,40,320|2,0,140,70,30|2,300,170,70,300|2,300,0,70,70|---`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })();
