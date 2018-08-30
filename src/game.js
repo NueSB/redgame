@@ -559,8 +559,7 @@ function Player(x, y)
         this.sprite.y = GLOBAL.GRAVITY < 0 ? 59 : 41;
         this.walkSprite.y = GLOBAL.GRAVITY < 0 ? 20 : 0;
         this.walkSpriteB.y = GLOBAL.GRAVITY < 0 ? 20 : 0;
-        if (this.weapon != null) this.weapon.sprite.y += (GLOBAL.GRAVITY < 0 ? this.weaponSpriteOffset : -this.weaponSpriteOffset);
-
+        if (this.weapon != null) this.weapon.sprite.y += (GLOBAL.GRAVITY < 0 ? this.weaponSpriteOffset : -this.weaponSpriteOffset); // FIXME: weapons going past "flip sprite" domain; original
       }
 
       if (wepSwitch[0] || wepSwitch[1] && this.weapon != null)
@@ -943,6 +942,36 @@ function GuardEye(x, y, w, h)
   return obj;
 }
 
+function CollisionRoomChanger(x,y,w,h,room)
+{
+  let a = {
+    x: x,
+    y: y,
+    xscale: w, 
+    yscale: h,
+    room: GLOBAL.LEVELS[room],
+    check: false,
+    type: "CollisionRoomChanger",
+    update: function()
+    {
+      this.check = !this.check;
+      if (this.check)
+      {
+        if (collideType(this, "Player"))
+        {
+          console.log("ALGORITHM");
+          new SlideTransition(0, true, this.room);
+        }
+        ctx.strokeStyle = "#FF0000";
+        ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
+      }
+
+    }
+  }
+  GLOBAL.OBJECTS.push(a);
+  return a;
+}
+
 let player = new Player(0, 0),
   camera = new Camera(player);
 
@@ -1048,8 +1077,8 @@ document.addEventListener('keyup', (key) =>
 6 - EyeGiver
 
 Params:
- 0  1  2  3  4
-id, x, y, w, h
+ 0  1  2  3  4  5
+id, x, y, w, h  EXTRA
 /******************/
 
 function parseID(params)
@@ -1074,6 +1103,8 @@ function parseID(params)
       return new EyeGiver(params[1], params[2]);
     case 7:
       return new GuardEye(params[1], params[2], params[3], params[4]);
+    case 8:
+      return new CollisionRoomChanger(params[1], params[2], params[3], params[4], params[5]);
 
     default:
       console.error(`ERROR: Unknown object found with params ${params}`);
@@ -1171,6 +1202,21 @@ function loadTileMap(tilemap)
   }
   // draw the loaded tilemap to the offscreen canvas.
 }
+
+function collideType(objA, type)
+{
+  for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
+  {
+    let obj = GLOBAL.OBJECTS[i];
+    if (obj.type == type && boxIntersect(objA.x, objA.y, objA.xscale, objA.yscale,
+    obj.x, obj.y, obj.xscale, obj.yscale))
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 //
 // utils
@@ -1319,5 +1365,5 @@ var Easings = {
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
-  GLOBAL.LEVELS = [`0|#6A00FF|360|240|---|0,20,90|1|7,290,30,16,128|2,0,40,70,20|2,0,0,40,60|2,0,140,40,320|2,0,140,70,30|2,300,170,70,300|2,300,0,70,70|---`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
+  GLOBAL.LEVELS = [`0|#6A00FF|360|240|---|0,20,90|1|7,290,30,16,128|2,0,40,70,20|2,0,0,40,60|2,0,140,40,320|2,0,140,70,30|2,300,170,70,300|2,300,0,70,70|8,340,70,40,120,1|---`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })();
