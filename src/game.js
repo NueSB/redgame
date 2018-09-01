@@ -771,7 +771,7 @@ function SlideTransition(speed, out, lvl)
   let obj = {
     x: 0,
     y: 0,
-    w: this.out ? 0 : canvas.width,
+    w: out ? 0 : canvas.width,
     h: canvas.width,
     out: out,
     timer: 0,
@@ -890,10 +890,11 @@ function GuardEye(x, y, w, h)
       this.hp -= amt;
       this.dFlash.current = this.dFlash.amt;
       this.dFlash.shakeCur = this.dFlash.shakeAmt;
-      for(let i = 0; i < 20; i++)
+      for(let i = 0; i < 10; i++)
       {
-        let b = GLOBAL.WEAPONS[0].projectile;
-        new Projectile(this.x, this.y + this.yscale/2, b.w, b.h, randrange(1,4), randrange(90, 360), b.sprite, randrange(60,75));
+        let b = GLOBAL.WEAPONS[1].projectile;
+        let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(3,5), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;;
+
         // needs smoke sprites
       }
       if (this.hp <= 0)
@@ -906,8 +907,8 @@ function GuardEye(x, y, w, h)
     {
       for(let i = 0; i < 60; i++)
       {
-        let b = GLOBAL.WEAPONS[0].projectile;
-        new Projectile(this.x, this.y + this.yscale/2, b.w, b.h, randrange(4,20), randrange(0, 360), b.sprite, randrange(60,75));
+        let b = GLOBAL.WEAPONS[1].projectile;
+        let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
         
       }
       arrayRemove(this, GLOBAL.OBJECTS);
