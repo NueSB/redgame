@@ -750,7 +750,7 @@ function Camera(target)
 
     drawGUI: function(x, y)
     {
-      this.overlay.draw(x, y, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height);
+      if (this.overlay != null) this.overlay.draw(x, y, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height);
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       ctx.fillStyle = GLOBAL.ROOM.color;
       if (target.type === "Player") ctx.fillRect(x + 3, y + 1, 73 * (target.hp / 3)-5, 6);
@@ -910,7 +910,7 @@ function GuardEye(x, y, w, h)
       {
         let b = GLOBAL.WEAPONS[1].projectile;
         let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
-        
+
       }
       arrayRemove(this, GLOBAL.OBJECTS);
     },
@@ -1147,8 +1147,8 @@ function loadLevel(level)
     if (!isNaN(params[0])) obj = parseID(params);
     if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
-  
-  camera.overlay = loadOverlay(settings[4]);
+  camera.overlay = null;
+  if (settings[4] != "") camera.overlay = loadOverlay(settings[4]);
 
   // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
   for (let i = 0; i < GLOBAL.WEAPONS.length; i++)
@@ -1180,7 +1180,12 @@ function loadBG(index)
     bgctx.fillRect(0, 0, bg.width, bg.height);
   } else
   {
-    bgctx.drawImage(bgsheet, 0, GLOBAL.ROOM.bg.height * index, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height,
+    let scrollers = index.split(',');
+    if (scrollers.length > 1)
+    {
+      GLOBAL.ROOM.bgscroll = [scrollers[1], scrollers[2]];
+    }
+    bgctx.drawImage(bgsheet, 0, GLOBAL.ROOM.bg.height * scrollers[0], GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height,
                     0, 0, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height);
   }
 }
@@ -1373,5 +1378,5 @@ var Easings = {
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
-  GLOBAL.LEVELS = [`0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120,1|---|9,0,140|`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416|---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
+  GLOBAL.LEVELS = [`0,0,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120,1|---|9,0,140|`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416||---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })()
