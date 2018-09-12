@@ -260,7 +260,7 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
     kickback: kickback || 0,
     // private (not actually)
     timer: delay,
-    origspritex: sprite.x,
+    origsprite: [sprite.x, sprite.y],
     facing: 1,
 
     update: function()
@@ -269,7 +269,8 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
       this.x = this.owner.x + this.owner.xscale / 2 + this.offset[0];
       this.x -= this.owner.facing * this.sprite.w * this.size;
       this.y = this.owner.y + this.owner.yscale / 2 + this.offset[1];
-      this.sprite.x = this.origspritex + (this.owner.facing == 1 ? this.sprite.w : 0);
+      this.sprite.x = this.origsprite[0] + (this.owner.facing == 1 ? this.sprite.w : 0);
+      this.sprite.y = this.origsprite[1] + (GLOBAL.GRAVITY < 0 ? this.sprite.h : 0);
 
       if ((this.auto ? keyDown("X") : keyPressed("X")) && this.timer === 0)
       {
@@ -559,13 +560,13 @@ function Player(x, y)
         this.sprite.y = GLOBAL.GRAVITY < 0 ? 59 : 41;
         this.walkSprite.y = GLOBAL.GRAVITY < 0 ? 20 : 0;
         this.walkSpriteB.y = GLOBAL.GRAVITY < 0 ? 20 : 0;
-        if (this.weapon != null) this.weapon.sprite.y += (GLOBAL.GRAVITY < 0 ? this.weaponSpriteOffset : -this.weaponSpriteOffset); // FIXME: weapons going past "flip sprite" domain; original
       }
 
       if (wepSwitch[0] || wepSwitch[1] && this.weapon != null)
       {
         let dir = (wepSwitch[0] ? -1 : 1);
-        this.weapon.sprite.y -= (GLOBAL.GRAVITY < 0 ? this.weaponSpriteOffset : 0);
+        this.weapon.sprite.x = this.weapon.origsprite[0];
+        this.weapon.sprite.y = this.weapon.origsprite[1];
         this.weaponIndex = (this.weaponIndex + dir) % this.weapons.length;
         if (this.weaponIndex === -1) this.weaponIndex = this.weapons.length - 1;
         this.weapon.owner = null;
@@ -910,7 +911,7 @@ function GuardEye(x, y, w, h)
       {
         let b = GLOBAL.WEAPONS[1].projectile;
         let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
-
+        
       }
       arrayRemove(this, GLOBAL.OBJECTS);
     },
@@ -1043,7 +1044,7 @@ function update()
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
 
-  ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, GLOBAL.ROOM.width, GLOBAL.ROOM.height, xmove, ymove, GLOBAL.ROOM.width, GLOBAL.ROOM.height);
+  ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height);
   camera.drawGUI(xmove, ymove);
    // FIXME: make the region not 500 miles wide and only render the visible tiles
   window.requestAnimationFrame(update);
