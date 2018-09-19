@@ -126,15 +126,18 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
 
     },
 
+    destroy: function()
+    {
+      new BulletFlash(this.x, this.y);
+      if (this.sprite.type === "AnimatedSprite") arrayRemove(this.sprite, GLOBAL.OBJECTS);
+      arrayRemove(this, GLOBAL.OBJECTS);
+    },
+
     update: function()
     {
       this.time++;
       this.cUpdate();
-      if (this.time >= this.destroyTime)
-      {
-        if (this.sprite.type === "AnimatedSprite") arrayRemove(this.sprite, GLOBAL.OBJECTS);
-        arrayRemove(this, GLOBAL.OBJECTS);
-      }
+      if (this.time >= this.destroyTime) this.destroy();
 
       for (let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
@@ -179,12 +182,12 @@ function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
     switch(obj.type)
     {
       case "Object":
-        this.spd *= -0.5;
+        this.destroy();
         break;
       
       case "Enemy":
-        arrayRemove(this, GLOBAL.OBJECTS);
         obj.damage(1);
+        arrayRemove(this, GLOBAL.OBJECTS);
         break;
     }
   }
@@ -221,7 +224,7 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
       this.h *= 0.95;
       if (this.w <= 0.01)
       {
-        arrayRemove(this, GLOBAL.OBJECTS);
+        this.destroy();
       }
     }
   };
@@ -879,9 +882,9 @@ function GuardEye(x, y, w, h)
     yscale: h,
     sprite: new Sprite(enemysheet, 0, 0, 76, 172),
     dFlash: {
-      amt: 60,
+      amt: 40,
       current: 0,
-      shakeAmt: 60,
+      shakeAmt: 120,
       shakeCur: 0
     },
     type: "Enemy",
@@ -974,12 +977,31 @@ function CollisionRoomChanger(x,y,w,h,room)
   return a;
 }
 
+function BulletFlash(x, y)
+{
+  let obj = {
+    x: x,
+    y: y,
+    xscale: 15,
+    yscale: 15,
+    tick: 0,
+    sprite: new AnimatedSprite(spritesheet, 181, 49, 15, 15, 0, 5, 3, 0, false),
+    update: function()
+    {
+       this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
+       if (++this.tick > this.sprite.frames * this.sprite.time) arrayRemove(this, GLOBAL.OBJECTS);
+    }
+  }
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
 let player = new Player(0, 0),
   camera = new Camera(player);
 
 GLOBAL.WEAPONS = [
   new Weapon("testpistol", null, true, 5, [0, 0], 1,
-    new TestPistolProjectile(0, 0, 10, 10, 5, 0,
+    new TestPistolProjectile(0, 0, 10, 10, 8, 0,
       new Sprite(spritesheet, 0, 21, 8, 4), 100),
     new Sprite(spritesheet, 10, 22, 10, 6),
     1, 0),
@@ -1046,7 +1068,6 @@ function update()
 
   ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height);
   camera.drawGUI(xmove, ymove);
-   // FIXME: make the region not 500 miles wide and only render the visible tiles
   window.requestAnimationFrame(update);
   ctx.translate(xmove, ymove);
 }
