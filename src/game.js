@@ -1011,9 +1011,10 @@ function BackgroundImage(x, y, xscr, yscr, bg)
     {
       this.x += this.xscroll;
       this.y += this.yscroll;
-      if (boxIntersect(this.x, this.y, 360, 240, 360, 0, 360, 240))
+      if (boxIntersect(this.x, this.y, 360, 240, 360*2, 0, 360, 240))
       {
-        this.x = this.xstart, this.y = this.ystart; // need to come up with a formula for Accurate Resetting:tm:
+        this.x = -360; // need to come up with a formula for Accurate Resetting:tm:
+        this.y = 0;
       }
       this.bg.draw(this.x, this.y, 360, 240);
     }
