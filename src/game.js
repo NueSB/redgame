@@ -26,6 +26,7 @@ var GLOBAL = {
     height: 720,
     color: "#AA11FF",
     bgColor: "",
+    bgscroll: [0,0],
     bg: document.querySelector('#bg'),
     tilemap: document.querySelector('#t')
   }
@@ -902,7 +903,7 @@ function GuardEye(x, y, w, h)
 
         // needs smoke sprites
       }
-      if (this.hp <= 0)
+      if (this.hp < 0)
       {
         this.die();
       }
@@ -914,7 +915,6 @@ function GuardEye(x, y, w, h)
       {
         let b = GLOBAL.WEAPONS[1].projectile;
         let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
-        
       }
       arrayRemove(this, GLOBAL.OBJECTS);
     },
@@ -999,8 +999,8 @@ function BulletFlash(x, y)
 function BackgroundImage(x, y, xscr, yscr, bg)
 {
   let obj = {
-    x: x,
-    y: y,
+    xoffset: x,
+    yoffset: y,
     xscroll: xscr,
     yscroll: yscr,
     bg: bg,
@@ -1009,19 +1009,20 @@ function BackgroundImage(x, y, xscr, yscr, bg)
 
     update: function()
     {
-      this.x += this.xscroll;
-      this.y += this.yscroll;
-      if (boxIntersect(this.x, this.y, 360, 240, 360*2, 0, 360, 240))
+      this.x = camera.x + this.xoffset;
+      this.y = camera.y + this.yoffset;
+      this.xoffset += this.xscroll;
+      this.yoffset += this.yscroll;
+      if (boxIntersect(this.x + this.xoffset, this.y, 360, 240, this.x + 360*2, 0, 360, 240))
       {
-        this.x = -360; // need to come up with a formula for Accurate Resetting:tm:
-        this.y = 0;
+        this.xoffset = -360; // need to come up with a formula for Accurate Resetting:tm:
+        this.yoffset = 0;
       }
       this.bg.draw(this.x, this.y, 360, 240);
     }
   }
 
   GLOBAL.OBJECTS.push(obj);
-
 }
 
 let player = new Player(0, 0),
@@ -1094,7 +1095,8 @@ function update()
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
 
-  ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height);
+  if (GLOBAL.ROOM.tilemap.width >= 16)
+    ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height);
   camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
   ctx.translate(xmove, ymove);
@@ -1425,5 +1427,6 @@ var Easings = {
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
-  GLOBAL.LEVELS = [`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120,1|---|9,0,140|`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416||---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
+  GLOBAL.LEVELS = [`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120,1|---|9,0,140|`,`0,1,0|#FF00FF|1280|720|0|---|0,32,192|1|2,-64,-32,32,32|2,0,736,32,32|2,0,736,32,32|2,0,0,736,128|2,0,288,512,288|2,64,736,32,32|2,704,128,32,448|2,64,736,32,32|---||`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416||---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })()
+// bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
