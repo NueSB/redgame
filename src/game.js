@@ -1,14 +1,3 @@
-//
-//
-//
-//   THIS PROJECT HAS MOVED TO GITHUB!!
-//   it probably runs a bit smoother there, check it out:
-//   https://github.com/NueSB/redgame
-//
-//
-
-
-
 var spritesheet = new Image(),
     playersheet = new Image(),
     tilesheet = new Image(),
