@@ -1,3 +1,14 @@
+//
+//
+//
+//   THIS PROJECT HAS MOVED TO GITHUB!!
+//   it probably runs a bit smoother there, check it out:
+//   https://github.com/NueSB/redgame
+//
+//
+
+
+
 var spritesheet = new Image(),
     playersheet = new Image(),
     tilesheet = new Image(),
@@ -272,7 +283,7 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
       this.timer = Math.max(0, this.timer - 1);
       this.x = this.owner.x + this.owner.xscale / 2 + this.offset[0];
       this.x -= this.owner.facing * this.sprite.w * this.size;
-      this.y = this.owner.y + this.owner.yscale / 2 + this.offset[1];
+      this.y = lerp(this.y, this.owner.y + this.owner.yscale / 2 + this.offset[1], 0.83);
       this.sprite.x = this.origsprite[0] + (this.owner.facing == 1 ? this.sprite.w : 0);
       this.sprite.y = this.origsprite[1] + (GLOBAL.GRAVITY < 0 ? this.sprite.h : 0);
 
@@ -1037,8 +1048,8 @@ GLOBAL.WEAPONS = [
   new Weapon("pesttistol", null, false, 5, [0, 0], 6,
     new PumpProjectile(0, 0, 7.5, 7.5, 5, 10,
       new Sprite(spritesheet, 0, 21, 8, 4), 600),
-    new Sprite(spritesheet, 177, 0, 16, 7),
-    1, 20)
+    new Sprite(spritesheet, 177, 0, 17, 7),
+    1, 10)
   // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
   // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
 ];
@@ -1422,11 +1433,12 @@ var Easings = {
 
 (function()
 {
-  spritesheet.src = "src/data/spritesheet.png";
-  playersheet.src = "src/data/playersheet.png";
-  enemysheet.src = "src/data/enemysheet.png";
-  tilesheet.src = "src/data/tilesheet.png";
-  bgsheet.src = "src/data/bgsheet.png";
+  let site = "https://nuesb.github.io/redgame/";
+  spritesheet.src = site+"src/data/spritesheet.png";
+  playersheet.src = site+"src/data/playersheet.png";
+  enemysheet.src = site+"src/data/enemysheet.png";
+  tilesheet.src = site+"src/data/tilesheet.png";
+  bgsheet.src = site+"src/data/bgsheet.png";
   GLOBAL.LEVELS = [`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120,1|---|9,0,140|`,`0,1,0|#6A00FF|1280|720|0|---|0,32,192|1|2,-64,-32,32,32|2,0,736,32,32|2,0,736,32,32|2,0,0,736,128|2,0,288,512,288|2,64,736,32,32|2,704,128,32,448|2,64,736,32,32|---||`,`#000000|#AA11FF|1280|720|---|0,640,480|1|2,520,640,240,640|6,640,416||---|0,520,640|3,520,656|3,520,672|3,520,688|3,520,704|1,536,640|4,536,656|4,536,672|4,536,688|4,536,704|1,552,640|4,552,656|4,552,672|4,552,688|4,552,704|1,568,640|4,568,656|4,568,672|4,568,688|4,568,704|1,584,640|4,584,656|4,584,672|4,584,688|4,584,704|1,600,640|4,600,656|4,600,672|4,600,688|4,600,704|1,616,640|4,616,656|4,616,672|4,616,688|4,616,704|1,632,640|4,632,656|4,632,672|4,632,688|4,632,704|1,648,640|4,648,656|4,648,672|4,648,688|4,648,704|1,664,640|4,664,656|4,664,672|4,664,688|4,664,704|1,680,640|4,680,656|4,680,672|4,680,688|4,680,704|1,696,640|4,696,656|4,696,672|4,696,688|4,696,704|1,712,640|4,712,656|4,712,672|4,712,688|4,712,704|1,728,640|4,728,656|4,728,672|4,728,688|4,728,704| 2,744,640|5,744,656|5,744,672|5,744,688|5,744,704|`];
 })()
 // bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
