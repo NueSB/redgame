@@ -723,17 +723,25 @@ function Player(x, y)
   };
 }
 
-function Wall(x, y, w, h)
+function Wall(x, y, w, h, i = false)
 {
   return {
     x: x,
     y: y,
     xscale: w,
     yscale: h,
+    invis: i,
     type: "Object",
     update: function() { this.draw() },
-    draw: function(){ ctx.fillStyle = GLOBAL.ROOM.color; ctx.fillRect(this.x, this.y, this.xscale, this.yscale); }
-    
+    draw: function()
+    {
+      if (this.invis)
+      {
+        return;
+      }
+       ctx.fillStyle = GLOBAL.ROOM.color;
+       ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+    }
   }
 }
 
@@ -1145,7 +1153,7 @@ function parseID(params)
       camera = new Camera(player);
       return camera;
     case 2:
-      return new Wall(params[1], params[2], params[3], params[4]);
+      return new Wall(params[1], params[2], params[3], params[4], params[5] || false);
     case 3:
       break; // skipping weapons for now
     case 4:
