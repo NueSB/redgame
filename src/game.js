@@ -43,9 +43,9 @@ function Sprite(src, x, y, w, h)
     w: w,
     h: h,
 
-    draw: function(xpos, ypos, xscale, yscale)
+    draw: function(xpos, ypos, xscale, yscale, canvas=ctx)
     {
-      ctx.drawImage(this.src,
+      canvas.drawImage(this.src,
         this.x,
         this.y,
         this.w,
@@ -755,10 +755,12 @@ function Camera(target)
     lerpspeed: 0.7,
     target: target,
     type: "Camera",
+    guiObjects: [],
     update: function()
     {
       this.x = clamp(lerp(this.x, this.target.x - canvas.width/2 + this.offsetX, this.lerpspeed), 0, GLOBAL.ROOM.width - canvas.width);
       this.y = clamp(lerp(this.y, this.target.y - canvas.height/2 + this.offsetY, this.lerpspeed), 0, GLOBAL.ROOM.height - canvas.height);
+
     },
 
     drawGUI: function(x, y)
@@ -767,15 +769,18 @@ function Camera(target)
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       ctx.fillStyle = GLOBAL.ROOM.color;
       if (target.type === "Player") ctx.fillRect(x + 3, y + 1, 73 * (target.hp / 3)-5, 6);
+      
+      
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
         if (GLOBAL.OBJECTS[i].type === "EyeGiver") 
         {          
           this.offsetY = -50; // not final. needs to be smoother
         }
-        if (GLOBAL.OBJECTS[i].type === "Transition") GLOBAL.OBJECTS[i].draw();
-
       }
+
+      for(let i = 0; i < this.guiObjects.length; i++)
+        this.guiObjects[i].draw();
     }
   };
 }
@@ -805,12 +810,12 @@ function SlideTransition(speed, out, lvl)
       if (this.out && this.w >= canvas.width) 
       {
         loadLevel(lvl);
-        arrayRemove(this, GLOBAL.OBJECTS);
+        arrayRemove(this, camera.guiObjects);
       }
       else if (!this.out && this.w < 0) arrayRemove(this, GLOBAL.OBJECTS)
     }
   };
-  GLOBAL.OBJECTS.push(obj);
+  camera.guiObjects.push(obj);
   return obj;
 }
 
@@ -1033,7 +1038,7 @@ function BackgroundImage(x, y, xscr, yscr, bg)
         this.xoffset = -360; // need to come up with a formula for Accurate Resetting:tm:
         this.yoffset = 0;
       }
-      this.bg.draw(this.x, this.y, 360, 240);
+      this.bg.draw(this.x, this.y, 360, 240, bgctx);
     }
   }
 
@@ -1096,25 +1101,25 @@ function update()
       ymove = camera.y;
     
   ctx.clearRect(0,0,canvas.width, canvas.height);
-  ctx.drawImage(GLOBAL.ROOM.bg, 0, 0, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height, 0, 0, canvas.width, canvas.height);
-
+  bgctx.drawImage(GLOBAL.ROOM.bg, 0, 0, GLOBAL.ROOM.bg.width, GLOBAL.ROOM.bg.height, 0, 0, canvas.width, canvas.height);
+  
   ctx.translate(-xmove, -ymove);
  
+  if (GLOBAL.ROOM.tilemap.width >= 16)
+    ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); // TODO: MOVE TILEMAP DOWN ONE LAYER
+
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
     var obj = GLOBAL.OBJECTS[i];
     obj.update();
   }
 
-  if (GLOBAL.ROOM.tilemap.width >= 16)
-    ctx.drawImage(GLOBAL.ROOM.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); // TODO: MOVE TILEMAP DOWN ONE LAYER
-
   for (var j = 0; j < GLOBAL.WEAPONS.length; j++)
   {
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
 
-
+  
   camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
   ctx.translate(xmove, ymove);
@@ -1295,6 +1300,14 @@ function collideType(objA, type)
     }
   }
   return false;
+}
+
+function findType(type)
+{
+  for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
+  {
+    
+  }
 }
 
 
