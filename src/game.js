@@ -822,7 +822,7 @@ function SlideTransition(speed, out, lvl)
         loadLevel(lvl);
         arrayRemove(this, camera.guiObjects);
       }
-      else if (!this.out && this.w < 0) arrayRemove(this, GLOBAL.OBJECTS)
+      else if (!this.out && this.w < 0) arrayRemove(this, camera.guiObjects);
     }
   };
   camera.guiObjects.push(obj);
@@ -1161,7 +1161,6 @@ function update()
   {
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
-
   camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
   ctx.translate(xmove, ymove);
@@ -1198,19 +1197,17 @@ function parseID(params)
 {
   let obj = types[params[0]],
       arg = params.slice(1);
-  if (obj === Player || obj === Camera)
+
+  if (obj === Player)
   {
-    if (obj === Player)
-    {
-      
-      player = new Player(...arg);
-      return player;
-    }
+    player = new Player(...arg);
+    return player;
+  } else if (obj === Camera)
+  {
     camera = new Camera(player);
     return camera;
   }
-
-  if (types[params[0]] === null)
+  if (obj === null)
   {
     console.error(`INVALID OBJECT: PARAMS\n${params}`);
     return null;
