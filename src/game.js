@@ -349,23 +349,32 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
     draw: function()
     {
       ctx.textStyle = "14px monospace";
-      let rotated = (this.direction == 360 || this.direction == 180 && GLOBAL.GRAVITY < 0);
+      
+      let rotated = (this.direction == 360 || (this.direction == 180));
       if (rotated)
       {
-        let pos = [this.owner.x + this.sprite.h,
-         this.y + (this.sprite.h * this.owner.facing * 2.5)];
-        //ctx.x = this.x;
+        let origin = 0;
+        let pos = [this.x,this.y];
+        if (this.owner.facing === 1) 
+        {
+          pos = [this.x + this.sprite.w, this.y];
+          origin = -this.sprite.w
+        }
         ctx.translate(pos[0], pos[1]);
-        let amt = 90 + (180 * this.owner.facing);
+        let amt = this.direction + 90 + (180 * this.owner.facing);
         if (GLOBAL.GRAVITY < 0)
         {
-          amt -= 180;
+          //amt -= 180;
         }
         ctx.rotate(amt * Math.PI/180);
-        this.sprite.draw(0, 0,
+        this.sprite.draw(origin, 0,
           this.sprite.w * this.size, this.sprite.h * this.size);
         ctx.rotate(-amt * Math.PI/180);
         ctx.translate(-pos[0], -pos[1]);
+        if (this.owner.facing === 1)
+        {
+          this.x -= this.sprite.w;
+        }
         return;
       }
       this.sprite.draw(this.x, this.y,
