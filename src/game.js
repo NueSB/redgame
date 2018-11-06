@@ -1115,9 +1115,11 @@ function SlideDoor(x, y, w, h, heavy=0, side=0, sprite)
     update: function()
     {
       if (keyPressed("I"))
-      if (this.opening)
-        this.close();
-      else this.open();
+      {
+        if (this.opening)
+          this.close();
+        else this.open();
+      }
       if (this.activated)
       {
         if (this.opening)
@@ -1170,7 +1172,6 @@ function incLoader()
 spritesheet.onload = function()
 {
   ctx.imageSmoothingEnabled = false;
-  loadLevel(GLOBAL.LEVELS[0]);
   GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
   incLoader();
 };
@@ -1178,8 +1179,11 @@ spritesheet.onload = function()
 bgsheet.onload = incLoader();
 playersheet.onload = incLoader();
 enemysheet.onload = incLoader();
-tilesheet.onload = incLoader();
-
+tilesheet.onload = function()
+{
+  loadLevel(GLOBAL.LEVELS[0]);
+  incLoader();
+};
 // main loop //
 
 // what??
