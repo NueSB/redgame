@@ -640,7 +640,7 @@ function Player(x, y)
 
       if (keyDown("SHIFT") && keyPressed("L"))
       {
-        loadLevel(GLOBAL.LEVELS[++GLOBAL.LEVELINDEX]);
+        loadLevel(GLOBAL.LEVELS[Math.min(GLOBAL.LEVELINDEX+1, GLOBAL.LEVELS.length-1)]);
       }
     },
 
@@ -1033,7 +1033,6 @@ function CollisionRoomChanger(x,y,w,h,level=GLOBAL.LEVELINDEX+1)
       if (collideType(this, "Player"))
       {
         new SlideTransition(0, true, this.level);
-        GLOBAL.LEVELINDEX = level;
       }
       ctx.strokeStyle = "#FF0000";
       ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
@@ -1295,6 +1294,7 @@ function loadLevel(level)
   GLOBAL.OBJECTS = [];
   GLOBAL.LEVEL.tilemap = document.querySelector('#t');
   GLOBAL.GRAVITY = 1;
+  GLOBAL.LEVELINDEX = GLOBAL.LEVELS.indexOf(level);
 
   level = level.split('---');
   let settings = level[0].split('|');
@@ -1567,7 +1567,6 @@ var Easings = {
   // acceleration until halfway, then deceleration 
   easeInOutQuint: function (t) { return t<.5 ? 16*t*t*t*t*t : 1+16*(--t)*t*t*t*t }
 };
-
 
 // data section
 // sorry for the mess! :p
