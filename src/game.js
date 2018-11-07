@@ -640,8 +640,7 @@ function Player(x, y)
 
       if (keyDown("SHIFT") && keyPressed("L"))
       {
-        GLOBAL.LEVELINDEX++;
-        loadLevel(GLOBAL.LEVELS[GLOBAL.LEVELINDEX + 1]);
+        loadLevel(GLOBAL.LEVELS[++GLOBAL.LEVELINDEX]);
       }
     },
 
