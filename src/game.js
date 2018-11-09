@@ -30,6 +30,11 @@ var GLOBAL = {
     bgscroll: [0,0],
     bg: document.querySelector('#bg'),
     tilemap: document.querySelector('#t'),
+    
+    entrances:
+    [
+      
+    ],
 
     setBgColor: function(color)
     {
@@ -696,9 +701,10 @@ function Player(x, y)
             {
               this.vy = 0;
               collision = true;
+              this.grounded = true;
               break;
             }
-
+            this.grounded = false;
           }
         }
         if (collision) break;
@@ -833,7 +839,7 @@ function Camera(target)
   return obj;
 }
 
-function SlideTransition(speed, out, lvl)
+function SlideTransition(speed, out, lvl, entranceID=0)
 {
   let obj = {
     x: 0,
@@ -842,6 +848,8 @@ function SlideTransition(speed, out, lvl)
     h: canvas.width,
     out: out,
     timer: 0,
+    level: lvl,
+    entranceID: entranceID,
     type: "Transition",
     
     update: function(){ },
@@ -857,7 +865,7 @@ function SlideTransition(speed, out, lvl)
       
       if (this.out && this.w >= canvas.width) 
       {
-        loadLevel(lvl);
+        loadLevel(this.level, this.entranceID);
         arrayRemove(this, camera.guiObjects);
       }
       else if (!this.out && this.w < 0) arrayRemove(this, camera.guiObjects);
@@ -1018,7 +1026,7 @@ function GuardEye(x, y, w, h)
   return obj;
 }
 
-function CollisionRoomChanger(x,y,w,h,level=GLOBAL.LEVELINDEX+1)
+function CollisionRoomChanger(x,y,w,h,level=GLOBAL.LEVELINDEX+1,entranceID=0)
 {
   let a = {
     x: x,
@@ -1028,11 +1036,12 @@ function CollisionRoomChanger(x,y,w,h,level=GLOBAL.LEVELINDEX+1)
     level: GLOBAL.LEVELS[level],
     check: false,
     type: "CollisionRoomChanger",
+    entranceID: entranceID,
     update: function()
     {
       if (collideType(this, "Player"))
       {
-        new SlideTransition(0, true, this.level);
+        new SlideTransition(0, true, this.level, this.entranceID);
       }
       ctx.strokeStyle = "#FF0000";
       ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
@@ -1312,7 +1321,7 @@ function parseTile(id)
   };
 }
 
-function loadLevel(level)
+function loadLevel(level, entrance=0)
 {
   GLOBAL.OBJECTS = [];
   GLOBAL.LEVEL.tilemap = document.querySelector('#t');
@@ -1325,6 +1334,8 @@ function loadLevel(level)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
+  GLOBAL.LEVEL.entrances = settings[5].split(',').map(x => x.split('\'').map(y => parseInt(y)));
+  console.log(GLOBAL.LEVEL.entrances);
   GLOBAL.LEVEL.color = settings[1]; GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
@@ -1357,6 +1368,8 @@ function loadLevel(level)
   player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   player.equip(GLOBAL.WEAPONS[0]);
   player.equip(GLOBAL.WEAPONS[1]);
+  player.x = GLOBAL.LEVEL.entrances[entrance][0];
+  player.y = GLOBAL.LEVEL.entrances[entrance][1];
   new SlideTransition(0, false, 0);
 
   loadTileMap(tiles);
@@ -1593,6 +1606,6 @@ var Easings = {
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
-  GLOBAL.LEVELS = [`#000000|#AA11FF|460|240|-1|---|0,64,176|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|2,112,176,16,16,1|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120,1|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
+  GLOBAL.LEVELS = [`#000000|#AA11FF|460|240|-1|64'176,90'-200|---|0,64,176|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|2,112,176,16,16,1|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
 })()
 // bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
