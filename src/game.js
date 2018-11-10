@@ -175,8 +175,6 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
 
     draw: function()
     {
-      ctx.fillStyle = "rgb(255,255,255)";
-      //ctx.fillText(`${this.time}\n${this.destroyTime}`, this.x, this.y -64);
       this.sprite.draw(this.x, this.y, this.w, this.h);
     }
   };
@@ -519,7 +517,7 @@ function Player(x, y)
     jumping: false,
     hp: 3,
     sprite: new Sprite(playersheet, 0, 41, 10, 18),
-    TMPsprite: new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0, true),
+    TMPsprite: new Sprite(spritesheet, 0, 0, 5, 9),
     walkSprite: new AnimatedSprite(playersheet, 1, 0, 12, 20, 0, 5, 4, 0, true),
     walkSpriteB: new AnimatedSprite(playersheet, 72, 0, 12, 20, 0, 5, 4, 0, true),
     weapon: null,
@@ -667,7 +665,7 @@ function Player(x, y)
           let obj = GLOBAL.OBJECTS[z];
           if (obj != this)
           {
-            if (obj.type === "Object" &&
+            if (obj.solid != undefined && obj.solid == true &&
               boxIntersect(this.x + sign(this.vx), this.y,
                 this.xscale, this.yscale,
                 obj.x, obj.y,
@@ -692,7 +690,7 @@ function Player(x, y)
         for (let z in GLOBAL.OBJECTS)
         {
           let obj = GLOBAL.OBJECTS[z];
-          if (obj.type === "Object")
+          if (obj.solid != undefined && obj.solid == true)
           {
             if (boxIntersect(this.x, this.y + sign(this.vy),
                 this.xscale, this.yscale,
@@ -782,6 +780,7 @@ function Wall(x, y, w, h, i = false)
     yscale: h,
     invis: i,
     type: "Object",
+    solid: true,
     update: function() { this.draw() },
     draw: function()
     {
@@ -827,7 +826,7 @@ function Camera(target)
       }
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       ctx.fillStyle = GLOBAL.LEVEL.color;
-      if (target.type === "Player") ctx.fillRect(x + 3, y + 1, 73 * (target.hp / 3)-5, 6);
+      if (target.type === "Player") ctx.fillRect(x + 3, y+3, 73 * (target.hp / 3)-4, 4);
       
       
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
@@ -1114,6 +1113,7 @@ function ElevatorPlatform(x, y, w, h)
     xscale: w,
     yscale: h,
     type: "Object",
+    solid: true,
     weight: 1,
     speed: 0.5,
 
@@ -1150,6 +1150,7 @@ function SlideDoor(x, y, w, h, heavy=0, side=0, sprite)
     animDuration: 30,
     progress: 0,
     type: "Object",
+    solid: true,
 
     open: function() 
     { this.opening = true; this.progress = this.animDuration; this.activated = true; },
@@ -1185,6 +1186,28 @@ function SlideDoor(x, y, w, h, heavy=0, side=0, sprite)
       } else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
     }
   }
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
+function SaveStation(x, y)
+{
+  let obj = {
+    x: x,
+    y: y,
+    sprite: new Sprite(2,54,22,10),
+    xscale: 0,
+    yscale: 0,
+    solid: true,
+    type: "SaveStation",
+
+    update: function()
+    {
+
+    }
+  };
+  obj.xscale = obj.sprite.w;
+  obj.yscale = obj.sprite.h;
   GLOBAL.OBJECTS.push(obj);
   return obj;
 }
@@ -1295,7 +1318,7 @@ Params:
 id, x, y, w, h  EXTRA
 /******************/
 
-let types = [Player, Camera, Wall, null, null, Enemy, EyeGiver, GuardEye, CollisionRoomChanger, BulletFlash, BackgroundImage, ElevatorPlatform, SlideDoor];
+let types = [Player, Camera, Wall, null, null, Enemy, EyeGiver, GuardEye, CollisionRoomChanger, BulletFlash, BackgroundImage, ElevatorPlatform, SlideDoor, SaveStation];
 
 function parseID(params)
 {
@@ -1381,7 +1404,6 @@ function loadLevel(level, entrance=0)
   }
   console.log(GLOBAL.LEVEL.entrances);
 
-  player.TMPsprite = new AnimatedSprite(spritesheet, 0, 46, 13, 18, 0, 7, 10, 0);
   player.equip(GLOBAL.WEAPONS[0]);
   player.equip(GLOBAL.WEAPONS[1]);
   player.x = GLOBAL.LEVEL.entrances[entrance][0];
@@ -1622,6 +1644,6 @@ var Easings = {
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
-  GLOBAL.LEVELS = [`#000000|#7d0239|360|240|1|---|0,176,304|1|2,-16,208,144,144,1|2,0,0,16,224,1|2,352,0,16,224,1|2,-16,-192,144,208,1|2,240,208,144,144,1|2,240,-192,144,208,1|2,112,352,144,16,1|2,112,-192,144,16,1|2,144,336,80,16,1|2,224,0,16,16,1|2,128,0,16,16,1|---|0,240,208|2,112,208|1,16,208,96,16|1,256,208,96,16|5,128,0|3,224,0,16,16|7,240,0,112,16|7,16,0,112,16|3,352,16,16,192|5,0,16,16,192|4,352,208|4,352,0|4,0,0|4,-16,224,128,128|4,0,208,16,16|4,-128,224|3,240,224,16,112|5,112,224,16,128|4,256,224,112,112|`,`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,176|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|2,112,176,16,16,1|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192|6,368,130,0|---||`];
+  GLOBAL.LEVELS = [`#000000|#7d0239|360|240|1|---|0,176,304|1|2,-16,208,144,144,1|2,0,0,16,224,1|2,352,0,16,224,1|2,-16,-192,144,208,1|2,240,208,144,144,1|2,240,-192,144,208,1|2,112,352,144,16,1|2,112,-192,144,16,1|2,144,336,80,16,1|2,224,0,16,16,1|2,128,0,16,16,1|---|0,240,208|2,112,208|1,16,208,96,16|1,256,208,96,16|5,128,0|3,224,0,16,16|7,240,0,112,16|7,16,0,112,16|3,352,16,16,192|5,0,16,16,192|4,352,208|4,352,0|4,0,0|4,-16,224,128,128|4,0,208,16,16|4,-128,224|3,240,224,16,112|5,112,224,16,128|4,256,224,112,112|`,`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,176|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,112,176|2,160,176,16,16|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
 })()
 // bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
