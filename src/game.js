@@ -713,7 +713,7 @@ function Player(x, y)
       for (let o = 0; o < GLOBAL.OBJECTS.length; o++)
       {
         let obj = GLOBAL.OBJECTS[o];
-        if (obj.type === "Object" &&
+        if (obj.solid != undefined && obj.solid == true &&
           boxIntersect(this.x, this.y + GLOBAL.GRAVITY,
             this.xscale, this.yscale,
             obj.x, obj.y,
@@ -1195,7 +1195,7 @@ function SaveStation(x, y)
   let obj = {
     x: x,
     y: y,
-    sprite: new Sprite(2,54,22,10),
+    sprite: new Sprite(spritesheet, 2,54,22,10),
     xscale: 0,
     yscale: 0,
     solid: true,
@@ -1203,7 +1203,8 @@ function SaveStation(x, y)
 
     update: function()
     {
-
+      this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
+      // TODO: ADD SAVE FUNCTIONS
     }
   };
   obj.xscale = obj.sprite.w;
