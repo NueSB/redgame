@@ -402,6 +402,7 @@ function Enemy(x, y, w, h, hp, sprite)
     yscale: h,
     hp: 1,
     sprite: sprite,
+    solid: true,
     vx: 0,
     vy: 3,
     merge: false,
@@ -665,7 +666,7 @@ function Player(x, y)
           let obj = GLOBAL.OBJECTS[z];
           if (obj != this)
           {
-            if (obj.solid != undefined && obj.solid == true &&
+            if (obj.solid != undefined && obj.solid &&
               boxIntersect(this.x + sign(this.vx), this.y,
                 this.xscale, this.yscale,
                 obj.x, obj.y,
@@ -690,7 +691,7 @@ function Player(x, y)
         for (let z in GLOBAL.OBJECTS)
         {
           let obj = GLOBAL.OBJECTS[z];
-          if (obj.solid != undefined && obj.solid == true)
+          if (obj.solid != undefined && obj.solid)
           {
             if (boxIntersect(this.x, this.y + sign(this.vy),
                 this.xscale, this.yscale,
@@ -713,17 +714,18 @@ function Player(x, y)
       for (let o = 0; o < GLOBAL.OBJECTS.length; o++)
       {
         let obj = GLOBAL.OBJECTS[o];
-        if (obj.solid != undefined && obj.solid == true &&
+        if (obj.solid != undefined && obj.solid &&
           boxIntersect(this.x, this.y + GLOBAL.GRAVITY,
             this.xscale, this.yscale,
             obj.x, obj.y,
             obj.xscale, obj.yscale))
         {
           this.grounded = true;
+          if (obj.vy != undefined)
+            this.vy = obj.vy*2;
           break;
         }
         this.grounded = false;
-
       }
 
       // <\collision>
@@ -819,7 +821,7 @@ function Camera(target)
       if (this.overlay != null) 
       {
         ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.95;
         this.overlay.draw(x, y, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
@@ -827,7 +829,10 @@ function Camera(target)
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       ctx.fillStyle = GLOBAL.LEVEL.color;
       if (target.type === "Player") ctx.fillRect(x + 3, y+3, 73 * (target.hp / 3)-4, 4);
-      
+      ctx.strokeStyle = "#FF0000";
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 1.0;
+      ctx.strokeRect(x, y+40, 16, 16);
       
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
@@ -1018,13 +1023,12 @@ function GuardEye(x, y, w, h)
     {
       if (!this.dead)
       {
-      if (this.dFlash.current > 0) 
-      {
-        this.sprite.x = 76;
-      } else this.sprite.x = 0; 
+        if (this.dFlash.current > 0) 
+        {
+          this.sprite.x = 76;
+        } else this.sprite.x = 0; 
       }
       this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
-      
     }
   }
   GLOBAL.OBJECTS.push(obj);
@@ -1115,11 +1119,15 @@ function ElevatorPlatform(x, y, w, h)
     type: "Object",
     solid: true,
     weight: 1,
+    triggered: false,
     speed: 0.5,
+    vx: 0,
+    vy: 0.5,
 
     update: function()
     {
-      this.y -= this.speed;
+      this.y -= this.vy;
+
       this.draw();
     },
 
