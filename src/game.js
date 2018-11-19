@@ -98,7 +98,6 @@ function AnimatedSprite(src, x, y, w, h,
 
   a.draw = function(xpos, ypos, xscale, yscale)
   {
-    ctx.fillStyle = "rgb(255,255,255)";
     ctx.drawImage(a.src,
       a.x + (a.w * a.frame) + a.offset,
       a.y,
@@ -112,6 +111,25 @@ function AnimatedSprite(src, x, y, w, h,
   GLOBAL.OBJECTS.push(a);
 
   return a;
+}
+
+function Color(obj)
+{
+  let r,g,b,a,x = 0;
+  if (obj.hex)
+  {
+    let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
+    //console.log(cols);
+    r = cols[0], g = cols[1], b = cols[2], a = 255;
+  }
+  return {
+    r: obj.r || r,
+    g: obj.g || g,
+    b: obj.b || b,
+    a: obj.a || a,
+    hex: obj.hex || null,
+    toString: function() {return `rgba(${this.r},${this.g},${this.b},${this.a})`}
+  }
 }
 
 function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
@@ -487,11 +505,19 @@ function DeathScreen()
 {
   var a = {
     timer: 0,
-    timerEvents: {},
+    timerEvents: {
+      1: function()
+      {
+        console.log("it is done");
+      }
+    },
 
     update: function()
     {
-      this.timer++;
+      if (typeof(this.timerEvents[++this.timer]) === typeof(Function))
+      {
+        this.timerEvents[this.timer]();
+      }
     }
   };
   GLOBAL.OBJECTS.push(a);
@@ -564,6 +590,7 @@ function Player(x, y)
     {
       if (this.damageTimer != 0) return;
       this.hp -= dmg;
+      if (this.hp <= 0) this.die();
       this.damageFlash = !this.damageFlash;
       this.dTimerRun = true;
     },
@@ -827,12 +854,22 @@ function Camera(target)
         ctx.globalCompositeOperation = 'source-over';
       }
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
-      ctx.fillStyle = GLOBAL.LEVEL.color;
-      if (target.type === "Player") ctx.fillRect(x + 3, y+3, 73 * (target.hp / 3)-4, 4);
-      ctx.strokeStyle = "#FF0000";
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 1.0;
-      ctx.strokeRect(x, y+40, 16, 16);
+      if (this.target.type === "Player")
+      { 
+        let c = new Color({hex: GLOBAL.LEVEL.color});
+        ctx.fillText(c.toString(), x, y+50)
+        ctx.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
+        for(let i = 0; i < 10; i++)
+        {
+          c.r *= 0.8;
+          c.g *= 0.8;
+          c.b *= 0.8;
+          ctx.fillText(c.toString(), x, y+i*9+64)
+          ctx.fillStyle = c.toString();
+          ctx.fillRect(x+i*3, y+10, 80, 16);
+        }
+
+      }
       
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
