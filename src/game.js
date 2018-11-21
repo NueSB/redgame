@@ -38,7 +38,7 @@ var GLOBAL = {
 
     setBgColor: function(color)
     {
-      bgctx.fillStyle = color;
+      bgctx.fillStyle = color.type===typeof(Color) ? color.toString() : color;
       bgctx.fillRect(0,0,360,240);
     }
   }
@@ -115,11 +115,11 @@ function AnimatedSprite(src, x, y, w, h,
 
 function Color(obj)
 {
-  let r,g,b,a,x = 0;
+  let r = 0, g = 0, b = 0, a = 255;  // :puke:
+  a = 255;
   if (obj.hex)
   {
     let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
-    //console.log(cols);
     r = cols[0], g = cols[1], b = cols[2], a = 255;
   }
   return {
@@ -128,7 +128,10 @@ function Color(obj)
     b: obj.b || b,
     a: obj.a || a,
     hex: obj.hex || null,
-    toString: function() {return `rgba(${this.r},${this.g},${this.b},${this.a})`}
+    toString: function() 
+    {
+      return `rgba(${this.r},${this.g},${this.b},${this.a})`;
+    }
   }
 }
 
@@ -856,17 +859,13 @@ function Camera(target)
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       if (this.target.type === "Player")
       { 
-        let c = new Color({hex: GLOBAL.LEVEL.color});
-        ctx.fillText(c.toString(), x, y+50)
+        let c = GLOBAL.LEVEL.color;
+        ctx.fillStyle = c.toString();
         ctx.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
-        for(let i = 0; i < 10; i++)
+        for(let i = GLOBAL.WEAPONS[player.weaponIndex]; i < GLOBAL.WEAPONS.length; i++)
         {
-          c.r *= 0.8;
-          c.g *= 0.8;
-          c.b *= 0.8;
-          ctx.fillText(c.toString(), x, y+i*9+64)
-          ctx.fillStyle = c.toString();
-          ctx.fillRect(x+i*3, y+10, 80, 16);
+          let wep = GLOBAL.WEAPONS[i].sprite;
+          wep.draw(x, y+i*9+64, 16, 16);
         }
 
       }
@@ -945,8 +944,12 @@ function EyeGiver(x, y)
       draw: function(progress, timer)
       {
         let size = this.scale * Easings.easeInOutCubic(progress);
-        GLOBAL.LEVEL.color = `rgb(${progress * 255},0,${progress * 110})`;
-        GLOBAL.LEVEL.setBgColor(`rgb(${progress * 170/4},0,${progress * 140/5})`);
+
+        GLOBAL.LEVEL.color = new Color({r: progress * 255,
+                                        b: progress * 110});
+
+        GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
+                                           b: progress * 140/5}));
         ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
         ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
@@ -979,8 +982,8 @@ function EyeGiver(x, y)
 
     draw: function()
     {
-      ctx.fillStyle = GLOBAL.LEVEL.color;
       ctx.beginPath();
+      ctx.fillStyle = GLOBAL.LEVEL.color.toString();
       ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
       ctx.fill();
     }
@@ -1409,7 +1412,7 @@ function loadLevel(level, entrance=0)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
-  GLOBAL.LEVEL.color = settings[1]; GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
+  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
   {
@@ -1442,13 +1445,10 @@ function loadLevel(level, entrance=0)
   
   GLOBAL.LEVEL.entrances = settings[5].split(',').map(x => x.split('\'').map(y => parseInt(y)));
   GLOBAL.LEVEL.entrances.splice(0, 0, [player.x, player.y]);
-  console.log(GLOBAL.LEVEL.entrances[1][0]);
   if (Number.isNaN(GLOBAL.LEVEL.entrances[GLOBAL.LEVEL.entrances.length - 1][0])) 
   {
-    console.log("YO");
     GLOBAL.LEVEL.entrances.pop();
   }
-  console.log(GLOBAL.LEVEL.entrances);
 
   player.equip(GLOBAL.WEAPONS[0]);
   player.equip(GLOBAL.WEAPONS[1]);
