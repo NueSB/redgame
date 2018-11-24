@@ -683,9 +683,9 @@ function Player(x, y)
 
     update: function()
     {
+      this.interacted = false;
       this.input();
       if (!this.grounded) this.vy = clamp(this.vy + GLOBAL.GRAVITY * (this.jumping ? 0.16 : 0.32), -this.maxvy, this.maxvy);
-
       // collision hell
       // horizontal
 
@@ -754,12 +754,18 @@ function Player(x, y)
             obj.xscale, obj.yscale))
         {
           this.grounded = true;
+          if (obj.interactable && this.grounded && keyPressed("D")) 
+          {
+            obj.interact();
+            this.interacted = true;
+          }
           if (obj.vy != undefined)
             this.vy = obj.vy*2;
           break;
         }
         this.grounded = false;
       }
+      if (this.grounded && keyPressed("D") && !this.interacted) new hmm(this.x+2, this.y+2);
 
       // <\collision>
 
@@ -1042,6 +1048,7 @@ function GuardEye(x, y, w, h)
       {
         let b = GLOBAL.WEAPONS[1].projectile;
         let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
+        this.xscale = 0; this.yscale = 0;
       }
       this.sprite = new Sprite(enemysheet, 152, 0, 76, 172);
       //arrayRemove(this, GLOBAL.OBJECTS);
@@ -1250,16 +1257,43 @@ function SaveStation(x, y)
     xscale: 0,
     yscale: 0,
     solid: true,
+    interactable: true,
     type: "SaveStation",
 
     update: function()
     {
       this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
       // TODO: ADD SAVE FUNCTIONS
+    },
+    
+    interact: function()
+    {
+      saveGame(0);
+      player.vy += 10 * -GLOBAL.GRAVITY;
     }
   };
   obj.xscale = obj.sprite.w;
   obj.yscale = obj.sprite.h;
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
+function hmm(x, y)
+{
+  let obj = {
+    x: x,
+    y: y,
+    time: 0,
+    xscale: 0, yscale: 0,
+    sprite: new Sprite(playersheet, 21, 41, 4, 7),
+    update: function()
+    {
+      ++this.time;
+      if (this.time < 7) this.y -= Easings.easeInOutQuad(this.time / 7) * this.time;
+      this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
+      if (this.time >= 60) arrayRemove(this, GLOBAL.OBJECTS);
+    }
+  }
   GLOBAL.OBJECTS.push(obj);
   return obj;
 }
