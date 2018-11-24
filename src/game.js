@@ -642,10 +642,13 @@ function Player(x, y)
         loadLevel(GLOBAL.LEVELS[0]);
       }
 
-      if (keyDown("SHIFT") && keyPressed("L"))
+      if (keyDown("SHIFT"))
       {
-        loadLevel(GLOBAL.LEVELS[Math.min(GLOBAL.LEVELINDEX+1, GLOBAL.LEVELS.length-1)]);
+        if (keyPressed("L")) loadLevel(GLOBAL.LEVELS[Math.min(GLOBAL.LEVELINDEX+1, GLOBAL.LEVELS.length-1)]);
+        if (keyPressed("O")) saveGame(0);
+        if (keyPressed("P")) loadGame(0);
       }
+       
     },
 
     update: function()
@@ -1482,6 +1485,32 @@ function loadTileMap(tilemap)
     tmap.drawImage(tilesheet, tile.x, tile.y, 16, 16, tileData[1], tileData[2], 16, 16);
   }
   // draw the loaded tilemap to the offscreen canvas.
+}
+
+function saveGame(index)
+{
+  console.log('test');
+  localStorage['save'+index] = JSON.stringify(
+    {
+      level: GLOBAL.LEVELINDEX,
+      x: player.x,
+      y: player.y,
+      hp: player.hp,
+      vx: player.vx,
+      vy: player.vy
+    }
+  );
+}
+
+function loadGame(index)
+{
+  let data = JSON.parse(localStorage['save'+index]);
+  loadLevel(GLOBAL.LEVELS[data.level]);
+  player.x = data.x,
+  player.y = data.y,
+  player.hp = data.hp,
+  player.vx = data.vx,
+  player.vy = data.vy;
 }
 
 function collideType(objA, type)
