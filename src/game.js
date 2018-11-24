@@ -38,7 +38,7 @@ var GLOBAL = {
 
     setBgColor: function(color)
     {
-      bgctx.fillStyle = color;
+      bgctx.fillStyle = color.type===typeof(Color) ? color.toString() : color;
       bgctx.fillRect(0,0,360,240);
     }
   }
@@ -98,7 +98,6 @@ function AnimatedSprite(src, x, y, w, h,
 
   a.draw = function(xpos, ypos, xscale, yscale)
   {
-    ctx.fillStyle = "rgb(255,255,255)";
     ctx.drawImage(a.src,
       a.x + (a.w * a.frame) + a.offset,
       a.y,
@@ -112,6 +111,28 @@ function AnimatedSprite(src, x, y, w, h,
   GLOBAL.OBJECTS.push(a);
 
   return a;
+}
+
+function Color(obj)
+{
+  let r = 0, g = 0, b = 0, a = 255;  // :puke:
+  a = 255;
+  if (obj.hex)
+  {
+    let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
+    r = cols[0], g = cols[1], b = cols[2], a = 255;
+  }
+  return {
+    r: obj.r || r,
+    g: obj.g || g,
+    b: obj.b || b,
+    a: obj.a || a,
+    hex: obj.hex || null,
+    toString: function() 
+    {
+      return `rgba(${this.r},${this.g},${this.b},${this.a})`;
+    }
+  }
 }
 
 function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
@@ -487,11 +508,19 @@ function DeathScreen()
 {
   var a = {
     timer: 0,
-    timerEvents: {},
+    timerEvents: {
+      1: function()
+      {
+        console.log("it is done");
+      }
+    },
 
     update: function()
     {
-      this.timer++;
+      if (typeof(this.timerEvents[++this.timer]) === typeof(Function))
+      {
+        this.timerEvents[this.timer]();
+      }
     }
   };
   GLOBAL.OBJECTS.push(a);
@@ -564,6 +593,7 @@ function Player(x, y)
     {
       if (this.damageTimer != 0) return;
       this.hp -= dmg;
+      if (this.hp <= 0) this.die();
       this.damageFlash = !this.damageFlash;
       this.dTimerRun = true;
     },
@@ -830,12 +860,18 @@ function Camera(target)
         ctx.globalCompositeOperation = 'source-over';
       }
       ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
-      ctx.fillStyle = GLOBAL.LEVEL.color;
-      if (target.type === "Player") ctx.fillRect(x + 3, y+3, 73 * (target.hp / 3)-4, 4);
-      ctx.strokeStyle = "#FF0000";
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 1.0;
-      ctx.strokeRect(x, y+40, 16, 16);
+      if (this.target.type === "Player")
+      { 
+        let c = GLOBAL.LEVEL.color;
+        ctx.fillStyle = c.toString();
+        ctx.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
+        for(let i = GLOBAL.WEAPONS[player.weaponIndex]; i < GLOBAL.WEAPONS.length; i++)
+        {
+          let wep = GLOBAL.WEAPONS[i].sprite;
+          wep.draw(x, y+i*9+64, 16, 16);
+        }
+
+      }
       
       for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
@@ -911,8 +947,12 @@ function EyeGiver(x, y)
       draw: function(progress, timer)
       {
         let size = this.scale * Easings.easeInOutCubic(progress);
-        GLOBAL.LEVEL.color = `rgb(${progress * 255},0,${progress * 110})`;
-        GLOBAL.LEVEL.setBgColor(`rgb(${progress * 170/4},0,${progress * 140/5})`);
+
+        GLOBAL.LEVEL.color = new Color({r: progress * 255,
+                                        b: progress * 110});
+
+        GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
+                                           b: progress * 140/5}));
         ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
         ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
@@ -945,8 +985,8 @@ function EyeGiver(x, y)
 
     draw: function()
     {
-      ctx.fillStyle = GLOBAL.LEVEL.color;
       ctx.beginPath();
+      ctx.fillStyle = GLOBAL.LEVEL.color.toString();
       ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
       ctx.fill();
     }
@@ -1375,7 +1415,7 @@ function loadLevel(level, entrance=0)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
-  GLOBAL.LEVEL.color = settings[1]; GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
+  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
   {
@@ -1408,13 +1448,10 @@ function loadLevel(level, entrance=0)
   
   GLOBAL.LEVEL.entrances = settings[5].split(',').map(x => x.split('\'').map(y => parseInt(y)));
   GLOBAL.LEVEL.entrances.splice(0, 0, [player.x, player.y]);
-  console.log(GLOBAL.LEVEL.entrances[1][0]);
   if (Number.isNaN(GLOBAL.LEVEL.entrances[GLOBAL.LEVEL.entrances.length - 1][0])) 
   {
-    console.log("YO");
     GLOBAL.LEVEL.entrances.pop();
   }
-  console.log(GLOBAL.LEVEL.entrances);
 
   player.equip(GLOBAL.WEAPONS[0]);
   player.equip(GLOBAL.WEAPONS[1]);
