@@ -9,7 +9,7 @@ var spritesheet = new Image(),
 // game
 //
 var canvas = document.getElementById('c');
-var ctx = canvas.getContext("2d");
+var ctx = canvas.getContext("webgl2");
 
 var TIME = {
   frame: 0
