@@ -9,7 +9,7 @@ var spritesheet = new Image(),
 // game
 //
 var canvas = document.getElementById('c');
-var ctx = canvas.getContext("webgl2");
+var gl = canvas.getContext("webgl2");
 
 var TIME = {
   frame: 0
@@ -1320,12 +1320,15 @@ GLOBAL.WEAPONS = [
 function incLoader()
 {
   loadProgress++;
-  if (loadProgress >= 5) update();
+  if (loadProgress >= 5) 
+  {
+    glSetup();
+    update();
+  }
 }
 
 spritesheet.onload = function()
 {
-  ctx.imageSmoothingEnabled = false;
   GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
   incLoader();
 };
@@ -1338,6 +1341,118 @@ tilesheet.onload = function()
   loadLevel(GLOBAL.LEVELS[0]);
   incLoader();
 };
+
+function glSetup()
+{
+  let vertsrc = `#version 300 es
+  in vec2 pos;
+  uniform vec2 uResolution;
+
+  void main()
+  {
+    // pixels -> 0 <-> 1
+    vec2 zerotoone = pos / uResolution;
+
+    vec2 zeroto2 = zerotoone * 2.0;
+    // 0 <-> 2 --> -1 <-> 1 (clipspace)
+    vec2 clipSpace = zeroto2 - 1.0;
+    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+  }
+  `
+
+  let fragsrc = `#version 300 es
+  precision mediump float;
+  
+  out vec4 col;
+  void main()
+  {
+    col = vec4(1.0, 0.0, 0.5, 1.0);
+  }`;
+
+  let vertShader = createShader(gl, gl.VERTEX_SHADER, vertsrc);
+  let fragShader = createShader(gl, gl.FRAGMENT_SHADER, fragsrc);
+
+  let program = createProgram(gl, vertShader, fragShader);
+  let pos = gl.getAttribLocation(program, "pos");
+  let resUniform = gl.getUniformLocation(program, "uResolution");
+  let posBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  let positions = [
+    0, 0,
+    0, 240,
+    360, 240
+  ];
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+  let vertArray = gl.createVertexArray();
+  gl.bindVertexArray(vertArray);
+
+  gl.enableVertexAttribArray(pos);
+
+  let size = 2,
+      type = gl.FLOAT,
+      normalize = false,
+      stride = 0,
+      offset = 0;
+  gl.vertexAttribPointer(pos, size, type, normalize, stride, offset);
+
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.useProgram(program);
+  gl.uniform2f(resUniform, canvas.width, canvas.height);
+
+  gl.bindVertexArray(vertArray);
+
+  //gl.drawArrays(gl.TRIANGLES, 0, positions.length/2);
+  graphics.fillRect(0, 0, 16, 16);
+}
+
+function createShader(gl, type, src)
+{
+  let shader = gl.createShader(type);
+  gl.shaderSource(shader, src);
+  gl.compileShader(shader);
+  let woke = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+  if (woke) return shader;
+
+  console.log(gl.getShaderInfoLog(shader));
+  gl.deleteShader(shader);
+}
+
+function createProgram(gl, vert, frag)
+{
+  let program = gl.createProgram();
+  gl.attachShader(program, vert);
+  gl.attachShader(program, frag);
+  gl.linkProgram(program);
+  let woke = gl.getProgramParameter(program, gl.LINK_STATUS)
+  if (woke) return program;
+
+  console.log(gl.getProgramInfoLog(program));
+  gl.deleteProgram(program);
+}
+
+let graphics = 
+{
+  fillRect: function(x, y, w, h)
+  {
+    let x2 = x+w,
+        y2 = y+h;
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      x, y,
+      x, y2,
+      x2, y2,
+      x2, y2,
+      x2, y,
+      x, y
+    ]), gl.STATIC_DRAW);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+}
+
 // main loop //
 
 // what??
@@ -1351,6 +1466,9 @@ tilesheet.onload = function()
 
 function update()
 {
+  //lets get shit VISUAL before we start gamestuff
+  console.log('woke');
+  return;
   ++TIME.frame;
   
   let xmove = camera.x,
