@@ -1344,37 +1344,10 @@ tilesheet.onload = function()
 
 function glSetup()
 {
-  let vertsrc = `#version 300 es
-  in vec2 pos;
-  uniform vec2 uResolution;
-
-  void main()
-  {
-    // pixels -> 0 <-> 1
-    vec2 zerotoone = pos / uResolution;
-
-    vec2 zeroto2 = zerotoone * 2.0;
-    // 0 <-> 2 --> -1 <-> 1 (clipspace)
-    vec2 clipSpace = zeroto2 - 1.0;
-    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-  }
-  `
-
-  let fragsrc = `#version 300 es
-  precision mediump float;
-  
-  out vec4 col;
-  void main()
-  {
-    col = vec4(1.0, 0.0, 0.5, 1.0);
-  }`;
-
-  let vertShader = createShader(gl, gl.VERTEX_SHADER, vertsrc);
-  let fragShader = createShader(gl, gl.FRAGMENT_SHADER, fragsrc);
-
-  let program = createProgram(gl, vertShader, fragShader);
+  generateShader(0);
   let pos = gl.getAttribLocation(program, "pos");
   let resUniform = gl.getUniformLocation(program, "uResolution");
+  let inColor = gl.getUniformLocation(program, "uColor");
   let posBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
   let positions = [
@@ -1402,6 +1375,8 @@ function glSetup()
 
   gl.useProgram(program);
   gl.uniform2f(resUniform, canvas.width, canvas.height);
+  let levelCol = GLOBAL.LEVEL.color;
+  gl.uniform4f(inColor, levelCol.r/255, levelCol.g/255, levelCol.b/255, levelCol.a/255);
 
   gl.bindVertexArray(vertArray);
 
@@ -1434,6 +1409,15 @@ function createProgram(gl, vert, frag)
   gl.deleteProgram(program);
 }
 
+function generateShader(index)
+{
+  let vertShader = createShader(gl, gl.VERTEX_SHADER, graphics.shaders[index].vert);
+  let fragShader = createShader(gl, gl.FRAGMENT_SHADER, graphics.shaders[index].frag;
+
+  let program = createProgram(gl, vertShader, fragShader);
+  return program;
+}
+
 let graphics = 
 {
   fillRect: function(x, y, w, h)
@@ -1450,7 +1434,42 @@ let graphics =
     ]), gl.STATIC_DRAW);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-  }
+  },
+
+  shaders: [
+    {
+      name: "baseColor",
+      vert: `#version 300 es
+      in vec2 pos;
+      uniform vec2 uResolution;
+    
+      void main()
+      {
+        // pixels -> 0 <-> 1
+        vec2 zerotoone = pos / uResolution;
+    
+        vec2 zeroto2 = zerotoone * 2.0;
+        // 0 <-> 2 --> -1 <-> 1 (clipspace)
+        vec2 clipSpace = zeroto2 - 1.0;
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+      }
+      `,
+    
+      frag: `#version 300 es
+      precision mediump float;
+      
+      uniform vec4 uColor;
+      out vec4 col;
+      void main()
+      {
+        col = uColor;
+      }`,
+      vars: [
+        { name: "uResolution", type: "uniform" },
+        { name: "uColor", type: "uniform" }
+      ]
+    },
+  ]
 }
 
 // main loop //
