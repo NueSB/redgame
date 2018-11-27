@@ -1342,43 +1342,30 @@ tilesheet.onload = function()
   incLoader();
 };
 
+//
+// ---------------------------------------------------
+//
+
 function glSetup()
 {
-  generateShader(0);
-  let pos = gl.getAttribLocation(program, "pos");
-  let resUniform = gl.getUniformLocation(program, "uResolution");
-  let inColor = gl.getUniformLocation(program, "uColor");
-  let posBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-  let positions = [
-    0, 0,
-    0, 240,
-    360, 240
-  ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-  let vertArray = gl.createVertexArray();
-  gl.bindVertexArray(vertArray);
-
-  gl.enableVertexAttribArray(pos);
-
-  let size = 2,
-      type = gl.FLOAT,
-      normalize = false,
-      stride = 0,
-      offset = 0;
-  gl.vertexAttribPointer(pos, size, type, normalize, stride, offset);
+  for(let i = 0; i < graphics.shaders.length; i++)
+  {
+    graphics.programs.push(generateProgram(i));
+    console.log(graphics.programs);
+  }
+  let globalprogram = graphics.programs[0],
+      program = globalprogram.program,
+      pos = globalprogram.vars.pos.location;
+      resUniform = globalprogram.vars.uResolution.location;
+      inColor = globalprogram.vars.uColor.location;
 
   gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0, 0, 0, 0);
+  gl.clearColor(0.1, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
+  graphics.setShader(0);
+  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
 
-  gl.useProgram(program);
-  gl.uniform2f(resUniform, canvas.width, canvas.height);
-  let levelCol = GLOBAL.LEVEL.color;
-  gl.uniform4f(inColor, levelCol.r/255, levelCol.g/255, levelCol.b/255, levelCol.a/255);
-
-  gl.bindVertexArray(vertArray);
 
   //gl.drawArrays(gl.TRIANGLES, 0, positions.length/2);
   graphics.fillRect(0, 0, 16, 16);
@@ -1409,18 +1396,75 @@ function createProgram(gl, vert, frag)
   gl.deleteProgram(program);
 }
 
-function generateShader(index)
+function generateProgram(index)
 {
   let vertShader = createShader(gl, gl.VERTEX_SHADER, graphics.shaders[index].vert);
-  let fragShader = createShader(gl, gl.FRAGMENT_SHADER, graphics.shaders[index].frag;
+  let fragShader = createShader(gl, gl.FRAGMENT_SHADER, graphics.shaders[index].frag);
 
   let program = createProgram(gl, vertShader, fragShader);
-  return program;
+
+
+  let posBuffer = gl.createBuffer();
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+
+  let vertArray = gl.createVertexArray();
+  gl.bindVertexArray(vertArray);
+  let vars = {};
+  // start finding vars...
+  let vertstr = graphics.shaders[index].vert;
+  let fragstr = graphics.shaders[index].frag;
+
+  let vertvars = vertstr.slice(15, vertstr.indexOf('void')).split('\n').map(x => x.trim().slice(0,-1)).filter(y => y != '').map(z => z.split(' '));
+  let fragvars = fragstr.slice(15, fragstr.indexOf('void')).split('\n').map(x => x.trim().slice(0,-1)).filter(y => y != '').map(z => z.split(' '));
+  // god
+    let curVar = null,
+        varLocation = null;
+        buffers = [],
+        vertArrays = [];
+
+  for (let x = 0; x < vertvars.length; x++)
+  {
+    curVar = vertvars[x];
+    if (curVar[0] === 'out') continue;
+    else if (curVar[0] == 'uniform')
+    {
+      varLocation = gl.getUniformLocation(program, curVar[2]);
+    }
+      else if (curVar[0] == 'attribute' || curVar[0] == 'in')
+    {
+      varLocation = gl.getAttribLocation(program, curVar[2]);
+      gl.enableVertexAttribArray(varLocation);
+      gl.vertexAttribPointer(varLocation, 2, gl.FLOAT, false, 0, 0);
+    }
+
+    vars[curVar[2]] = {
+      location: varLocation,
+      type: curVar[1],
+      };
+  }
+  for (x = 0; x < fragvars.length; x++) 
+  {
+    curVar = fragvars[x];
+    if (curVar[0] === 'out') continue;
+    else if (curVar[0] === 'uniform') 
+      varLocation = gl.getUniformLocation(program, curVar[2]);
+    else if (curVar[0] === 'attribute' || curVar[0] === 'in')
+      varLocation = gl.getAttribLocation(program, curVar[2]);
+
+      vars[curVar[2]] = {
+        location: varLocation,
+        type: curVar[1],
+        };
+  }
+  return {program: program, vars: vars, vertArrays};
 }
 
 let graphics = 
 {
-  fillRect: function(x, y, w, h)
+  drawColor: new Color({r: 255,g: 255,b: 255,a: 255}),
+
+  rect: function(x,y,w,h)
   {
     let x2 = x+w,
         y2 = y+h;
@@ -1432,10 +1476,23 @@ let graphics =
       x2, y,
       x, y
     ]), gl.STATIC_DRAW);
+  },
 
+  fillRect: function(x, y, w, h)
+  {
+    this.rect(x,y,w,h);
+    
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   },
 
+  setShader: function(shader)
+  {
+    this.shader = this.programs[shader].program;
+    gl.useProgram(this.shader)
+  },
+
+  shader: null,
+  
   shaders: [
     {
       name: "baseColor",
@@ -1452,8 +1509,7 @@ let graphics =
         // 0 <-> 2 --> -1 <-> 1 (clipspace)
         vec2 clipSpace = zeroto2 - 1.0;
         gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-      }
-      `,
+      }`,
     
       frag: `#version 300 es
       precision mediump float;
@@ -1464,12 +1520,10 @@ let graphics =
       {
         col = uColor;
       }`,
-      vars: [
-        { name: "uResolution", type: "uniform" },
-        { name: "uColor", type: "uniform" }
-      ]
     },
-  ]
+  ],
+
+  programs: [],
 }
 
 // main loop //
