@@ -1353,22 +1353,14 @@ function glSetup()
     graphics.programs.push(generateProgram(i));
     console.log(graphics.programs);
   }
-  let globalprogram = graphics.programs[0],
-      program = globalprogram.program,
-      pos = globalprogram.vars.pos.location;
-      resUniform = globalprogram.vars.uResolution.location;
-      inColor = globalprogram.vars.uColor.location;
-
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0.1, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  graphics.setShader(0);
-  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
-  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
-
-
-  //gl.drawArrays(gl.TRIANGLES, 0, positions.length/2);
-  graphics.fillRect(0, 0, 16, 16);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      0, 0,
+      0, 3,
+      3, 3,
+      3, 3,
+      3, 0,
+      0, 0
+    ]), gl.STATIC_DRAW);
 }
 
 function createShader(gl, type, src)
@@ -1466,16 +1458,7 @@ let graphics =
 
   rect: function(x,y,w,h)
   {
-    let x2 = x+w,
-        y2 = y+h;
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      x, y,
-      x, y2,
-      x2, y2,
-      x2, y2,
-      x2, y,
-      x, y
-    ]), gl.STATIC_DRAW);
+    gl.uniformMatrix3fv(graphics.programs[0].vars['uMatrix'].location, false, this.mat3.translation(x, y));
   },
 
   fillRect: function(x, y, w, h)
@@ -1491,6 +1474,46 @@ let graphics =
     gl.useProgram(this.shader)
   },
 
+  mat3: {
+    identity: function()
+    {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1
+      ];
+    },
+
+    translation: function(x, y)
+    {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        x, y, 1
+      ];
+    },
+
+    rotation: function(radAngle)
+    {
+      let s = Math.sin(radAngle),
+          c = Math.cos(radAngle);
+      return [
+        c, -s, 0,
+        s,  c, 0,
+        0,  0, 1
+      ];
+    },
+
+    scale: function(x, y)
+    {
+      return [
+        x, 0, 0,
+        0, y, 0,
+        0, 0, 1
+      ];
+    }
+  },
+
   shader: null,
   
   shaders: [
@@ -1499,11 +1522,13 @@ let graphics =
       vert: `#version 300 es
       in vec2 pos;
       uniform vec2 uResolution;
+      uniform mat3 uMatrix;
     
       void main()
       {
+        vec2 position = (uMatrix * vec3(pos.xy, 1)).xy;
         // pixels -> 0 <-> 1
-        vec2 zerotoone = pos / uResolution;
+        vec2 zerotoone = position / uResolution;
     
         vec2 zeroto2 = zerotoone * 2.0;
         // 0 <-> 2 --> -1 <-> 1 (clipspace)
@@ -1521,6 +1546,34 @@ let graphics =
         col = uColor;
       }`,
     },
+
+    {
+      name: "texture",
+      vert: `#version 300 es
+      in vec4 aPos;
+      in vec2 aTexcoord;
+      
+      uniform mat4 uMatrix;
+      out vec2 vTexcoord;
+      
+      void main()
+      {
+        gl_Position = uMatrix * aPos;
+        vTexcoord = aTexcoord;
+      }`,
+
+      frag: `#version 300 es
+      precision mediump float;
+      
+      in vec2 vTexcoord;
+      uniform sampler2D uTexture;
+      out vec4 outCol;
+
+      void main()
+      {
+        outCol = texture(uTexture, vTexcoord);
+      }`
+    }
   ],
 
   programs: [],
@@ -1539,10 +1592,22 @@ let graphics =
 
 function update()
 {
-  //lets get shit VISUAL before we start gamestuff
-  console.log('woke');
-  return;
   ++TIME.frame;
+  //lets get shit VISUAL before we start gamestuff
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0.1, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  graphics.setShader(0);
+  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
+
+  for(let i = 0; i < 2500; i++)
+  {
+  graphics.fillRect((TIME.frame+i) % 360, 90+Math.sin(TIME.frame/10+i/90)*17, 16, 16);
+  }
+  window.requestAnimationFrame(update);
+  return;
+
   
   let xmove = camera.x,
       ymove = camera.y;
