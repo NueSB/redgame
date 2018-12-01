@@ -44,6 +44,194 @@ var GLOBAL = {
   }
 };
 
+let graphics = 
+{
+  drawColor: new Color({r: 255,g: 255,b: 255,a: 255}),
+
+  rect: function(x,y,w,h)
+  {
+    gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, this.mat3.translation(x, y));
+  },
+
+  fillRect: function(x, y, w, h)
+  {
+    this.rect(x,y,w,h);
+    
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  },
+
+  setShader: function(shader)
+  {
+    this.shader = this.programs[shader];
+    gl.useProgram(this.shader.program)
+  },
+
+  drawImage: function(texture, dx, dy)
+  {
+    this.setShader(1);
+    gl.uniform1i(this.shader.vars['uTexture'].location, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    this.fillRect(dx, dy, texture.width, texture.height);
+  },
+
+  loadTexture: function(src)
+{
+  let tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  let textureObj = {
+    width: 1,
+    height: 1,
+    texture: tex
+  };
+
+  if (typeof(src) === String)
+  {
+    let img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = src;
+    console.log('loadimage, src='+src);
+
+    img.onload = function()
+    {
+      textureObj.width = img.width,
+      textureObj.height = img.height;
+
+      gl.bindTexture(gl.TEXTURE_2D, textureObj.texture);
+    
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      graphics.textures.push(textureObj);
+      incLoader();
+    }
+  } else 
+  {
+    textureObj.width = src.width,
+    textureObj.height = src.height;
+
+    gl.bindTexture(gl.TEXTURE_2D, textureObj.texture);
+    
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    this.textures.push(textureObj);
+  }
+  console.log(textureObj);
+  return textureObj;
+},
+
+  mat3: {
+    identity: function()
+    {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1
+      ];
+    },
+
+    translation: function(x, y)
+    {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        x, y, 1
+      ];
+    },
+
+    rotation: function(radAngle)
+    {
+      let s = Math.sin(radAngle),
+          c = Math.cos(radAngle);
+      return [
+        c, -s, 0,
+        s,  c, 0,
+        0,  0, 1
+      ];
+    },
+
+    scale: function(x, y)
+    {
+      return [
+        x, 0, 0,
+        0, y, 0,
+        0, 0, 1
+      ];
+    }
+  },
+
+
+
+  shader: null,
+  
+  shaders: [
+    {
+      name: "baseColor",
+      vert: `#version 300 es
+      in vec2 pos;
+      uniform vec2 uResolution;
+      uniform mat3 uMatrix;
+    
+      void main()
+      {
+        vec2 position = (uMatrix * vec3(pos.xy, 1)).xy;
+        // pixels -> 0 <-> 1
+        vec2 zerotoone = position / uResolution;
+    
+        vec2 zeroto2 = zerotoone * 2.0;
+        // 0 <-> 2 --> -1 <-> 1 (clipspace)
+        vec2 clipSpace = zeroto2 - 1.0;
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+      }`,
+    
+      frag: `#version 300 es
+      precision mediump float;
+      
+      uniform vec4 uColor;
+      out vec4 col;
+      void main()
+      {
+        col = uColor;
+      }`,
+    },
+
+    {
+      name: "texture",
+      vert: `#version 300 es
+      in vec4 aPos;
+      in vec2 aTexcoord;
+      
+      uniform mat3 uMatrix;
+      out vec2 vTexcoord;
+      
+      void main()
+      {
+        gl_Position = vec4(uMatrix * aPos);
+        vTexcoord = aTexcoord;
+      }`,
+
+      frag: `#version 300 es
+      precision mediump float;
+      
+      in vec2 vTexcoord;
+      uniform sampler2D uTexture;
+      out vec4 outCol;
+
+      void main()
+      {
+        outCol = texture(uTexture, vTexcoord);
+      }`
+    }
+  ],
+
+  programs: [],
+
+  textures: []
+};
+
 // classes //
 
 function Sprite(src, x, y, w, h)
@@ -1319,28 +1507,22 @@ GLOBAL.WEAPONS = [
 // init //
 function incLoader()
 {
+  console.log('load');
   loadProgress++;
   if (loadProgress >= 5) 
   {
+    let x = [spritesheet, bgsheet, enemysheet, tilesheet, playersheet];
+    for(let i = 0; i < x.length; i++)
+    {
+      //console.log(x[i].crossOrigin);
+      graphics.loadTexture(x[i]);
+    }
+    GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
+    loadLevel(GLOBAL.LEVELS[0]);
     glSetup();
     update();
   }
 }
-
-spritesheet.onload = function()
-{
-  GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
-  incLoader();
-};
-
-bgsheet.onload = incLoader();
-playersheet.onload = incLoader();
-enemysheet.onload = incLoader();
-tilesheet.onload = function()
-{
-  loadLevel(GLOBAL.LEVELS[0]);
-  incLoader();
-};
 
 //
 // ---------------------------------------------------
@@ -1353,6 +1535,8 @@ function glSetup()
     graphics.programs.push(generateProgram(i));
     console.log(graphics.programs);
   }
+
+
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
       0, 0,
       0, 3,
@@ -1452,132 +1636,6 @@ function generateProgram(index)
   return {program: program, vars: vars, vertArrays};
 }
 
-let graphics = 
-{
-  drawColor: new Color({r: 255,g: 255,b: 255,a: 255}),
-
-  rect: function(x,y,w,h)
-  {
-    gl.uniformMatrix3fv(graphics.programs[0].vars['uMatrix'].location, false, this.mat3.translation(x, y));
-  },
-
-  fillRect: function(x, y, w, h)
-  {
-    this.rect(x,y,w,h);
-    
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-  },
-
-  setShader: function(shader)
-  {
-    this.shader = this.programs[shader].program;
-    gl.useProgram(this.shader)
-  },
-
-  mat3: {
-    identity: function()
-    {
-      return [
-        1, 0, 0,
-        0, 1, 0,
-        0, 0, 1
-      ];
-    },
-
-    translation: function(x, y)
-    {
-      return [
-        1, 0, 0,
-        0, 1, 0,
-        x, y, 1
-      ];
-    },
-
-    rotation: function(radAngle)
-    {
-      let s = Math.sin(radAngle),
-          c = Math.cos(radAngle);
-      return [
-        c, -s, 0,
-        s,  c, 0,
-        0,  0, 1
-      ];
-    },
-
-    scale: function(x, y)
-    {
-      return [
-        x, 0, 0,
-        0, y, 0,
-        0, 0, 1
-      ];
-    }
-  },
-
-  shader: null,
-  
-  shaders: [
-    {
-      name: "baseColor",
-      vert: `#version 300 es
-      in vec2 pos;
-      uniform vec2 uResolution;
-      uniform mat3 uMatrix;
-    
-      void main()
-      {
-        vec2 position = (uMatrix * vec3(pos.xy, 1)).xy;
-        // pixels -> 0 <-> 1
-        vec2 zerotoone = position / uResolution;
-    
-        vec2 zeroto2 = zerotoone * 2.0;
-        // 0 <-> 2 --> -1 <-> 1 (clipspace)
-        vec2 clipSpace = zeroto2 - 1.0;
-        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-      }`,
-    
-      frag: `#version 300 es
-      precision mediump float;
-      
-      uniform vec4 uColor;
-      out vec4 col;
-      void main()
-      {
-        col = uColor;
-      }`,
-    },
-
-    {
-      name: "texture",
-      vert: `#version 300 es
-      in vec4 aPos;
-      in vec2 aTexcoord;
-      
-      uniform mat4 uMatrix;
-      out vec2 vTexcoord;
-      
-      void main()
-      {
-        gl_Position = uMatrix * aPos;
-        vTexcoord = aTexcoord;
-      }`,
-
-      frag: `#version 300 es
-      precision mediump float;
-      
-      in vec2 vTexcoord;
-      uniform sampler2D uTexture;
-      out vec4 outCol;
-
-      void main()
-      {
-        outCol = texture(uTexture, vTexcoord);
-      }`
-    }
-  ],
-
-  programs: [],
-}
 
 // main loop //
 
@@ -1598,12 +1656,19 @@ function update()
   gl.clearColor(0.1, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   graphics.setShader(0);
-  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
-  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
-
+  graphics.fillRect(0,0,6,6);
+  //console.log(graphics.textures)
+  graphics.drawImage(graphics.textures[1].texture, 12, 12);
+  //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  //gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
+  
+  //graphics.setShader(1);
+  //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  //gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   for(let i = 0; i < 2500; i++)
   {
-  graphics.fillRect((TIME.frame+i) % 360, 90+Math.sin(TIME.frame/10+i/90)*17, 16, 16);
+    //
+    graphics.fillRect((TIME.frame+i) % 360, 90+Math.sin(TIME.frame/10+i/90)*17, 16, 16);
   }
   window.requestAnimationFrame(update);
   return;
@@ -2010,5 +2075,13 @@ var Easings = {
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
   GLOBAL.LEVELS = [`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,144|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,48,207|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`#000000|#7d0239|360|240|1|---|0,176,304|1|2,-16,208,144,144,1|2,0,0,16,224,1|2,352,0,16,224,1|2,-16,-192,144,208,1|2,240,208,144,144,1|2,240,-192,144,208,1|2,112,352,144,16,1|2,112,-192,144,16,1|2,144,336,80,16,1|2,224,0,16,16,1|2,128,0,16,16,1|---|0,240,208|2,112,208|1,16,208,96,16|1,256,208,96,16|5,128,0|3,224,0,16,16|7,240,0,112,16|7,16,0,112,16|3,352,16,16,192|5,0,16,16,192|4,352,208|4,352,0|4,0,0|4,-16,224,128,128|4,0,208,16,16|4,-128,224|3,240,224,16,112|5,112,224,16,128|4,256,224,112,112|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
-})()
+
+  spritesheet.onload = incLoader();
+  bgsheet.onload = incLoader();
+  playersheet.onload = incLoader();
+  enemysheet.onload = incLoader();
+  tilesheet.onload = incLoader();
+
+  console.log(GLOBAL.LEVELS);
+})();
 // bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
