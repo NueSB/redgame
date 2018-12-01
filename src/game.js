@@ -50,7 +50,9 @@ let graphics =
 
   rect: function(x,y,w,h)
   {
-    gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, this.mat3.translation(x, y));
+    let matrix = this.mat3.translation(x, y);
+    matrix = this.mat3.multiply(matrix, this.mat3.scale(w, h));
+    gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, matrix);
   },
 
   fillRect: function(x, y, w, h)
@@ -71,7 +73,7 @@ let graphics =
     this.setShader(1);
     gl.uniform1i(this.shader.vars['uTexture'].location, 0);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.bindTexture(gl.TEXTURE_2D, texture.texture);
     this.fillRect(dx, dy, texture.width, texture.height);
   },
 
@@ -160,10 +162,40 @@ let graphics =
         0, y, 0,
         0, 0, 1
       ];
+    },
+
+    multiply: function(a, b) { // TODO: beautify me
+      var a00 = a[0 * 3 + 0];
+      var a01 = a[0 * 3 + 1];
+      var a02 = a[0 * 3 + 2];
+      var a10 = a[1 * 3 + 0];
+      var a11 = a[1 * 3 + 1];
+      var a12 = a[1 * 3 + 2];
+      var a20 = a[2 * 3 + 0];
+      var a21 = a[2 * 3 + 1];
+      var a22 = a[2 * 3 + 2];
+      var b00 = b[0 * 3 + 0];
+      var b01 = b[0 * 3 + 1];
+      var b02 = b[0 * 3 + 2];
+      var b10 = b[1 * 3 + 0];
+      var b11 = b[1 * 3 + 1];
+      var b12 = b[1 * 3 + 2];
+      var b20 = b[2 * 3 + 0];
+      var b21 = b[2 * 3 + 1];
+      var b22 = b[2 * 3 + 2];
+      return [
+        b00 * a00 + b01 * a10 + b02 * a20,
+        b00 * a01 + b01 * a11 + b02 * a21,
+        b00 * a02 + b01 * a12 + b02 * a22,
+        b10 * a00 + b11 * a10 + b12 * a20,
+        b10 * a01 + b11 * a11 + b12 * a21,
+        b10 * a02 + b11 * a12 + b12 * a22,
+        b20 * a00 + b21 * a10 + b22 * a20,
+        b20 * a01 + b21 * a11 + b22 * a21,
+        b20 * a02 + b21 * a12 + b22 * a22,
+      ];
     }
   },
-
-
 
   shader: null,
   
@@ -201,15 +233,24 @@ let graphics =
     {
       name: "texture",
       vert: `#version 300 es
-      in vec4 aPos;
+      in vec2 aPos;
       in vec2 aTexcoord;
       
+      uniform vec2 uResolution;
       uniform mat3 uMatrix;
       out vec2 vTexcoord;
       
       void main()
       {
-        gl_Position = vec4(uMatrix * aPos);
+        vec2 position = (uMatrix * vec3(aPos.xy, 1)).xy;
+        // pixels -> 0 <-> 1
+        vec2 zerotoone = position / uResolution;
+    
+        vec2 zeroto2 = zerotoone * 2.0;
+        // 0 <-> 2 --> -1 <-> 1 (clipspace)
+        vec2 clipSpace = zeroto2 - 1.0;
+
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
         vTexcoord = aTexcoord;
       }`,
 
@@ -1656,20 +1697,22 @@ function update()
   gl.clearColor(0.1, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   graphics.setShader(0);
+  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   graphics.fillRect(0,0,6,6);
   //console.log(graphics.textures)
-  graphics.drawImage(graphics.textures[1].texture, 12, 12);
-  //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
-  //gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
+  //graphics.drawImage(graphics.textures[1], 12, 12);
+
   
   //graphics.setShader(1);
   //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
   //gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
+  /*
   for(let i = 0; i < 2500; i++)
   {
     //
     graphics.fillRect((TIME.frame+i) % 360, 90+Math.sin(TIME.frame/10+i/90)*17, 16, 16);
-  }
+  }*/
   window.requestAnimationFrame(update);
   return;
 
