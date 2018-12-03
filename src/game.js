@@ -8,9 +8,10 @@ var spritesheet = new Image(),
 //
 // game
 //
+
 var canvas = document.getElementById('c');
 var gl = canvas.getContext("webgl2", {antialias: false});
-
+let posBuffer = gl.createBuffer();
 var TIME = {
   frame: 0
 };
@@ -51,7 +52,8 @@ let graphics =
   rect: function(x,y,w,h)
   {
     let matrix = this.mat3.translation(x, y);
-    matrix = this.mat3.multiply(matrix, this.mat3.scale(w, h));
+    let scale = this.mat3.scale(w, h);
+    matrix = this.mat3.multiply(matrix, scale);
     gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, matrix);
   },
 
@@ -70,10 +72,50 @@ let graphics =
 
   drawImage: function(texture, dx, dy)
   {
+    let program = this.programs[1].program;
     this.setShader(1);
-    gl.uniform1i(this.shader.vars['uTexture'].location, 0);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture.texture);
+    // TODO: integrate, add texcoord pos args, less hardcoding etc
+
+  // provide texture coordinates for the rectangle.
+  var texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    0, 0,
+    0, 1,
+    1, 1,
+    1, 1,
+    1, 0,
+    0, 0]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(this.shader.vars['aTexcoord'].location);
+  var size = 2;          // 2 components per iteration
+  var type = gl.FLOAT;   // the data is 32bit floats
+  var normalize = false; // don't normalize the data
+  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+  var offset = 0;        // start at the beginning of the buffer
+  gl.vertexAttribPointer(
+    this.shader.vars['aTexcoord'].location, size, type, normalize, stride, offset)
+      
+  gl.activeTexture(gl.TEXTURE0);
+ 
+  // Bind it to texture unit 0' 2D bind point
+  gl.bindTexture(gl.TEXTURE_2D, texture.texture);
+
+ 
+  this.setShader(1);
+ 
+  // Pass in the canvas resolution so we can convert from
+  // pixels to clipspace in the shader
+  gl.uniform2f(this.shader.vars['uResolution'].location, gl.canvas.width, gl.canvas.height);
+ 
+  // Tell the shader to get the texture from texture unit 0
+  gl.uniform1i(this.shader.vars['uTexture'].location, 0);
+ 
+  // Bind the position buffer so gl.bufferData that will be called
+  // in setRectangle puts data in the position buffer
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+ 
+
     this.fillRect(dx, dy, texture.width, texture.height);
   },
 
@@ -84,6 +126,8 @@ let graphics =
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   let textureObj = {
     width: 1,
@@ -108,7 +152,7 @@ let graphics =
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
       gl.generateMipmap(gl.TEXTURE_2D);
       graphics.textures.push(textureObj);
-      incLoader();
+      //incLoader();
     }
   } else 
   {
@@ -116,9 +160,9 @@ let graphics =
     textureObj.height = src.height;
 
     gl.bindTexture(gl.TEXTURE_2D, textureObj.texture);
-    
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
-    gl.generateMipmap(gl.TEXTURE_2D);
+    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    //gl.generateMipmap(gl.TEXTURE_2D);
     this.textures.push(textureObj);
   }
   console.log(textureObj);
@@ -1580,10 +1624,10 @@ function glSetup()
 
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
       0, 0,
-      0, 3,
-      3, 3,
-      3, 3,
-      3, 0,
+      0, 1,
+      1, 1,
+      1, 1,
+      1, 0,
       0, 0
     ]), gl.STATIC_DRAW);
 }
@@ -1694,6 +1738,8 @@ function update()
   ++TIME.frame;
   //lets get shit VISUAL before we start gamestuff
   gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.clearColor(0.1, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   graphics.setShader(0);
@@ -1701,9 +1747,10 @@ function update()
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   graphics.fillRect(0,0,6,6);
   //console.log(graphics.textures)
-  //graphics.drawImage(graphics.textures[1], 12, 12);
-
-  
+  for(let i = 0; i < graphics.textures.length; i++)
+  {
+    graphics.drawImage(graphics.textures[i], i*2, i*2);
+  }
   //graphics.setShader(1);
   //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
   //gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
