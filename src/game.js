@@ -101,7 +101,7 @@ let graphics =
     this.fillRect(dx, dy, dw, dh);
   },
 
-  loadTexture: function(src)
+  loadTexture: function(src, name)
 {
   let tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -133,7 +133,7 @@ let graphics =
     
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
       gl.generateMipmap(gl.TEXTURE_2D);
-      graphics.textures.push(textureObj);
+      this.textures[name] = textureObj;
       //incLoader();
     }
   } else 
@@ -145,7 +145,7 @@ let graphics =
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
     //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
     //gl.generateMipmap(gl.TEXTURE_2D);
-    this.textures.push(textureObj);
+    this.textures[name] = textureObj;
   }
   console.log(textureObj);
   return textureObj;
@@ -297,7 +297,7 @@ let graphics =
 
   programs: [],
 
-  textures: []
+  textures: {}
 };
 
 // classes //
@@ -1583,7 +1583,7 @@ function incLoader()
     for(let i = 0; i < x.length; i++)
     {
       //console.log(x[i].crossOrigin);
-      graphics.loadTexture(x[i]);
+      graphics.loadTexture(x[i], x[i].src.split('/').slice(-1)[0].replace(/\..+/g, ''));
     }
     GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
     loadLevel(GLOBAL.LEVELS[0]);
@@ -1729,21 +1729,7 @@ function update()
   gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   graphics.fillRect(0,0,6,6);
-  //console.log(graphics.textures)
-  graphics.drawImage(graphics.textures[4], player.x, player.y, 10, 18, 0, 41, 10, 18);
-  for(let i = 0; i < graphics.textures.length; i++)
-  {
-
-  }
-  //graphics.setShader(1);
-  //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
-  //gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
-  /*
-  for(let i = 0; i < 2500; i++)
-  {
-    //
-    graphics.fillRect((TIME.frame+i) % 360, 90+Math.sin(TIME.frame/10+i/90)*17, 16, 16);
-  }*/
+  graphics.drawImage(graphics.textures.playersheet, player.x, player.y, 10, 18, 0, 41, 10, 18);
   window.requestAnimationFrame(update);
   return;
 
