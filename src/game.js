@@ -70,53 +70,35 @@ let graphics =
     gl.useProgram(this.shader.program)
   },
 
-  drawImage: function(texture, dx, dy)
+  drawImage: function(texture, dx, dy, dw, dh, sx = 0, sy = 0, sw, sh)
   {
-    let program = this.programs[1].program;
+    if (dw === undefined) 
+    {
+      dw = texture.width;
+    }
+    if (dh === undefined)
+    {
+      dh = texture.height;
+    } 
+    if (sx === undefined) sx = 0;
+    if (sy === undefined) sy = 0;
+    if (sw === undefined) sw = texture.width;
+    if (sh === undefined) sh = texture.height;
     this.setShader(1);
-    // TODO: integrate, add texcoord pos args, less hardcoding etc
+ 
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture.texture);
 
-  // provide texture coordinates for the rectangle.
-  var texCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0, 0,
-    0, 1,
-    1, 1,
-    1, 1,
-    1, 0,
-    0, 0]), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(this.shader.vars['aTexcoord'].location);
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    this.shader.vars['aTexcoord'].location, size, type, normalize, stride, offset)
-      
-  gl.activeTexture(gl.TEXTURE0);
- 
-  // Bind it to texture unit 0' 2D bind point
-  gl.bindTexture(gl.TEXTURE_2D, texture.texture);
+    gl.uniform2f(this.shader.vars['uResolution'].location, gl.canvas.width, gl.canvas.height);
+    gl.uniform1i(this.shader.vars['uTexture'].location, 0);
 
- 
-  this.setShader(1);
- 
-  // Pass in the canvas resolution so we can convert from
-  // pixels to clipspace in the shader
-  gl.uniform2f(this.shader.vars['uResolution'].location, gl.canvas.width, gl.canvas.height);
- 
-  // Tell the shader to get the texture from texture unit 0
-  gl.uniform1i(this.shader.vars['uTexture'].location, 0);
- 
-  // Bind the position buffer so gl.bufferData that will be called
-  // in setRectangle puts data in the position buffer
+    let texmatrix = this.mat3.translation(sx / texture.width, sy / texture.height);
+    texmatrix = this.mat3.multiply(texmatrix, this.mat3.scale(sw / texture.width, sh / texture.height));
+    gl.uniformMatrix3fv(this.shader.vars['uTexMatrix'].location, false, texmatrix);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
- 
 
-    this.fillRect(dx, dy, texture.width, texture.height);
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+    this.fillRect(dx, dy, dw, dh);
   },
 
   loadTexture: function(src)
@@ -282,6 +264,7 @@ let graphics =
       
       uniform vec2 uResolution;
       uniform mat3 uMatrix;
+      uniform mat3 uTexMatrix;
       out vec2 vTexcoord;
       
       void main()
@@ -295,7 +278,7 @@ let graphics =
         vec2 clipSpace = zeroto2 - 1.0;
 
         gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-        vTexcoord = aTexcoord;
+        vTexcoord = (uTexMatrix * vec3(aTexcoord, 1)).xy;
       }`,
 
       frag: `#version 300 es
@@ -1747,9 +1730,10 @@ function update()
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   graphics.fillRect(0,0,6,6);
   //console.log(graphics.textures)
+  graphics.drawImage(graphics.textures[4], player.x, player.y, 10, 18, 0, 41, 10, 18);
   for(let i = 0; i < graphics.textures.length; i++)
   {
-    graphics.drawImage(graphics.textures[i], i*2, i*2);
+
   }
   //graphics.setShader(1);
   //gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
