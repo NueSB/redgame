@@ -26,7 +26,7 @@ var GLOBAL = {
   {
     width: 1280,
     height: 720,
-    color: "#AA11FF",
+    color: new Color({hex: "#AA11FF"}),
     bgColor: "",
     bgscroll: [0,0],
     bg: document.querySelector('#bg'),
@@ -67,6 +67,8 @@ let graphics =
   fillRect: function(x, y, w, h)
   {
     this.setShader(0);
+    gl.uniform4f(this.shader.vars['uColor'].location, 
+    this.drawColor.r / 255, this.drawColor.g / 255, this.drawColor.b / 255, this.drawColor.a / 255); 
     this.drawRect(x,y,w,h);
   },
 
@@ -1090,9 +1092,10 @@ function Wall(x, y, w, h, i = false)
     {
       if (this.invis)
       {
-        //return;
+        return;
       }
-       //ctx.fillStyle = GLOBAL.LEVEL.color;
+       graphics.drawColor = GLOBAL.LEVEL.color;
+       //bgctx.fillText(graphics.drawColor, this.x, this.y)
        graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   }
@@ -1120,19 +1123,19 @@ function Camera(target)
 
     drawGUI: function(x, y)
     {
+      //console.log(this.overlay);
       if (this.overlay != null) 
       {
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.95;
+        //ctx.globalCompositeOperation = 'multiply';
+        //ctx.globalAlpha = 0.95;
         this.overlay.draw(x, y, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
-        ctx.globalAlpha = 1.0;
-        ctx.globalCompositeOperation = 'source-over';
+        //ctx.globalAlpha = 1.0;
+        //ctx.globalCompositeOperation = 'source-over';
       }
       graphics.drawImage(graphics.textures.spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       if (this.target.type === "Player")
       { 
-        let c = GLOBAL.LEVEL.color;
-        //ctx.fillStyle = c.toString();
+        graphics.drawColor = GLOBAL.LEVEL.color;
         graphics.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
         for(let i = GLOBAL.WEAPONS[player.weaponIndex]; i < GLOBAL.WEAPONS.length; i++)
         {
@@ -1179,7 +1182,7 @@ function SlideTransition(speed, out, lvl, entranceID=0)
       this.x = camera.x;
       this.y = camera.y;
       this.w += this.timer;
-      //ctx.fillStyle = "#000000";
+      graphics.drawColor = new Color({hex: "#000000"});
       graphics.fillRect(this.x, this.y, this.w, this.h);
       
       if (this.out && this.w >= canvas.width) 
@@ -1222,7 +1225,7 @@ function EyeGiver(x, y)
 
         GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
                                            b: progress * 140/5}));
-        ctx.fillStyle = "#FFFFFF";
+        graphics.drawColor = new Color({hex: "#FFFFFF"});
         ctx.beginPath();
         ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
         if (true) {} else {
@@ -1274,7 +1277,7 @@ function GuardEye(x, y, w, h)
     ogY: y,
     xscale: w,
     yscale: h,
-    sprite: new Sprite(enemysheet, 0, 0, 76, 172),
+    sprite: new Sprite(graphics.textures.enemysheet, 0, 0, 76, 172),
     dFlash: {
       amt: 40,
       current: 0,
@@ -1313,7 +1316,7 @@ function GuardEye(x, y, w, h)
         let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
         this.xscale = 0; this.yscale = 0;
       }
-      this.sprite = new Sprite(enemysheet, 152, 0, 76, 172);
+      this.sprite = new Sprite(graphics.textures.enemysheet, 152, 0, 76, 172);
       //arrayRemove(this, GLOBAL.OBJECTS);
     },
 
@@ -1365,8 +1368,8 @@ function CollisionRoomChanger(x,y,w,h,level=GLOBAL.LEVELINDEX+1,entranceID=0)
       {
         new SlideTransition(0, true, this.level, this.entranceID);
       }
-      ctx.strokeStyle = "#FF0000";
-      ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
+      //ctx.strokeStyle = "#FF0000";
+      //ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
     }
 
     }
@@ -1446,7 +1449,7 @@ function ElevatorPlatform(x, y, w, h)
 
     draw: function()
     {
-      //ctx.fillStyle = GLOBAL.LEVEL.color;
+      graphics.drawColor = GLOBAL.LEVEL.color;
       graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   }
@@ -1742,14 +1745,13 @@ function update()
   
   let xmove = camera.x,
       ymove = camera.y;
-    
-  //ctx.clearRect(0,0,canvas.width, canvas.height);
+  
   bgctx.drawImage(GLOBAL.LEVEL.bg, 0, 0, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height, 0, 0, canvas.width, canvas.height);
   
   //ctx.translate(-xmove, -ymove);
  
-  //if (GLOBAL.LEVEL.tilemap.width >= 16)
-    //ctx.drawImage(GLOBAL.LEVEL.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); 
+  if (GLOBAL.LEVEL.tilemap.width >= 16)
+    bgctx.drawImage(GLOBAL.LEVEL.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); 
 
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
@@ -1761,7 +1763,7 @@ function update()
   {
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
-  //camera.drawGUI(xmove, ymove);
+  camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
   //ctx.translate(xmove, ymove);
 }
@@ -1836,7 +1838,9 @@ function loadLevel(level, entrance=0)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
-  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
+  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); 
+  console.log(GLOBAL.LEVEL.color);
+  GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
   {
@@ -1851,7 +1855,8 @@ function loadLevel(level, entrance=0)
     //if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
   camera.overlay = null;
-  if (settings[4] != "") camera.overlay = loadOverlay(settings[4]);
+  console.log(settings);
+  if (settings[4] != '-1' && settings[4] != '') camera.overlay = loadOverlay(settings[4]);
 
   // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
   for (let i = 0; i < GLOBAL.WEAPONS.length; i++)
@@ -1905,7 +1910,7 @@ function loadBG(index)
 
 function loadOverlay(index)
 {
-  return new Sprite(bgsheet, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height * index, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
+  return new Sprite(graphics.textures.bgsheet, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height * index, 360, 240);
 }
 
 function loadTileMap(tilemap)
