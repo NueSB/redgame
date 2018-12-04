@@ -20,7 +20,7 @@ var GLOBAL = {
   OBJECTS: [],
   KEYS: new Map(),
   GRAVITY: 1.0,
-  FONT: new Sprite(),
+  //FONT: new Sprite(),
   LEVELINDEX: 0,
   LEVEL:
   {
@@ -56,12 +56,18 @@ let graphics =
     matrix = this.mat3.multiply(matrix, scale);
     gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, matrix);
   },
-
-  fillRect: function(x, y, w, h)
+  
+  drawRect: function(x, y, w, h)
   {
     this.rect(x,y,w,h);
     
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+  },
+
+  fillRect: function(x, y, w, h)
+  {
+    this.setShader(0);
+    this.drawRect(x,y,w,h);
   },
 
   setShader: function(shader)
@@ -70,8 +76,9 @@ let graphics =
     gl.useProgram(this.shader.program)
   },
 
-  drawImage: function(texture, dx, dy, dw, dh, sx = 0, sy = 0, sw, sh)
+  drawImage: function(texture, sx = 0, sy = 0, sw, sh, dx, dy, dw, dh)
   {
+    this.setShader(1);
     if (dw === undefined) 
     {
       dw = texture.width;
@@ -84,7 +91,7 @@ let graphics =
     if (sy === undefined) sy = 0;
     if (sw === undefined) sw = texture.width;
     if (sh === undefined) sh = texture.height;
-    this.setShader(1);
+    
  
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture.texture);
@@ -98,7 +105,7 @@ let graphics =
 
 
     gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-    this.fillRect(dx, dy, dw, dh);
+    this.drawRect(dx, dy, dw, dh);
   },
 
   loadTexture: function(src, name)
@@ -311,7 +318,7 @@ function Sprite(src, x, y, w, h)
     w: w,
     h: h,
 
-    draw: function(xpos, ypos, xscale, yscale, canvas=ctx)
+    draw: function(xpos, ypos, xscale, yscale, canvas=graphics)
     {
       canvas.drawImage(this.src,
         this.x,
@@ -354,7 +361,7 @@ function AnimatedSprite(src, x, y, w, h,
 
   a.draw = function(xpos, ypos, xscale, yscale)
   {
-    ctx.drawImage(a.src,
+    graphics.drawImage(a.src,
       a.x + (a.w * a.frame) + a.offset,
       a.y,
       a.w,
@@ -633,7 +640,7 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
 
     draw: function()
     {
-      ctx.textStyle = "14px monospace";
+      //ctx.textStyle = "14px monospace";
       
       let rotated = (this.direction == 360 || (this.direction == 180));
       if (rotated)
@@ -645,17 +652,17 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
           pos = [this.x + this.sprite.w, this.y];
           origin = -this.sprite.w
         }
-        ctx.translate(pos[0], pos[1]);
+        //ctx.translate(pos[0], pos[1]);
         let amt = this.direction + 90 + (180 * this.owner.facing);
         if (GLOBAL.GRAVITY < 0)
         {
           //amt -= 180;
         }
-        ctx.rotate(amt * Math.PI/180);
+        //ctx.rotate(amt * Math.PI/180);
         this.sprite.draw(origin, 0,
           this.sprite.w * this.size, this.sprite.h * this.size);
-        ctx.rotate(-amt * Math.PI/180);
-        ctx.translate(-pos[0], -pos[1]);
+        //ctx.rotate(-amt * Math.PI/180);
+        //ctx.translate(-pos[0], -pos[1]);
         if (this.owner.facing === 1)
         {
           this.x -= this.sprite.w;
@@ -802,10 +809,10 @@ function Player(x, y)
     grounded: false,
     jumping: false,
     hp: 3,
-    sprite: new Sprite(playersheet, 0, 41, 10, 18),
-    TMPsprite: new Sprite(spritesheet, 0, 0, 5, 9),
-    walkSprite: new AnimatedSprite(playersheet, 1, 0, 12, 20, 0, 5, 4, 0, true),
-    walkSpriteB: new AnimatedSprite(playersheet, 72, 0, 12, 20, 0, 5, 4, 0, true),
+    sprite: new Sprite(graphics.textures.playersheet, 0, 41, 10, 18),
+    TMPsprite: new Sprite(graphics.textures.spritesheet, 0, 0, 5, 9),
+    walkSprite: new AnimatedSprite(graphics.textures.playersheet, 1, 0, 12, 20, 0, 5, 4, 0, true),
+    walkSpriteB: new AnimatedSprite(graphics.textures.playersheet, 72, 0, 12, 20, 0, 5, 4, 0, true),
     weapon: null,
     weaponIndex: 0,
     weapons: [],
@@ -1083,10 +1090,10 @@ function Wall(x, y, w, h, i = false)
     {
       if (this.invis)
       {
-        return;
+        //return;
       }
-       ctx.fillStyle = GLOBAL.LEVEL.color;
-       ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+       //ctx.fillStyle = GLOBAL.LEVEL.color;
+       graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   }
   GLOBAL.OBJECTS.push(obj);
@@ -1121,12 +1128,12 @@ function Camera(target)
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
       }
-      ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
+      graphics.drawImage(graphics.textures.spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       if (this.target.type === "Player")
       { 
         let c = GLOBAL.LEVEL.color;
-        ctx.fillStyle = c.toString();
-        ctx.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
+        //ctx.fillStyle = c.toString();
+        graphics.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
         for(let i = GLOBAL.WEAPONS[player.weaponIndex]; i < GLOBAL.WEAPONS.length; i++)
         {
           let wep = GLOBAL.WEAPONS[i].sprite;
@@ -1172,8 +1179,8 @@ function SlideTransition(speed, out, lvl, entranceID=0)
       this.x = camera.x;
       this.y = camera.y;
       this.w += this.timer;
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(this.x, this.y, this.w, this.h);
+      //ctx.fillStyle = "#000000";
+      graphics.fillRect(this.x, this.y, this.w, this.h);
       
       if (this.out && this.w >= canvas.width) 
       {
@@ -1439,8 +1446,8 @@ function ElevatorPlatform(x, y, w, h)
 
     draw: function()
     {
-      ctx.fillStyle = GLOBAL.LEVEL.color;
-      ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+      //ctx.fillStyle = GLOBAL.LEVEL.color;
+      graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   }
 
@@ -1495,8 +1502,8 @@ function SlideDoor(x, y, w, h, heavy=0, side=0, sprite)
       }
       if (this.sprite === undefined)
       {
-        ctx.fillStyle = GLOBAL.LEVEL.color;
-        ctx.fillRect(this.x, this.y, this.xscale, this.yscale)
+        //ctx.fillStyle = GLOBAL.LEVEL.color;
+        graphics.fillRect(this.x, this.y, this.xscale, this.yscale)
       } else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
     }
   }
@@ -1509,7 +1516,7 @@ function SaveStation(x, y)
   let obj = {
     x: x,
     y: y,
-    sprite: new Sprite(spritesheet,0,44,44,20),
+    sprite: new Sprite(graphics.textures.spritesheet,0,44,44,20),
     xscale: 0,
     yscale: 0,
     solid: true,
@@ -1541,7 +1548,7 @@ function hmm(x, y)
     y: y,
     time: 0,
     xscale: 0, yscale: 0,
-    sprite: new Sprite(playersheet, 21, 41, 4, 7),
+    sprite: new Sprite(graphics.textures.playersheet, 21, 41, 4, 7),
     update: function()
     {
       ++this.time;
@@ -1554,23 +1561,9 @@ function hmm(x, y)
   return obj;
 }
 
-let player = new Player(0, 0),
-  camera = new Camera(player);
+var player = new Player(0, 0),
+    camera = new Camera(player);
 
-GLOBAL.WEAPONS = [
-  new Weapon("testpistol", null, true, 1, [0, 0], 1,
-    new TestPistolProjectile(0, 0, 10, 10, 8, 0,
-      new Sprite(spritesheet, 0, 21, 8, 4), 100),
-    new Sprite(spritesheet, 10, 22, 10, 6),
-    1, 0),
-  new Weapon("pesttistol", null, false, 5, [0, 0], 6,
-    new PumpProjectile(0, 0, 7.5, 7.5, 5, 10,
-      new Sprite(spritesheet, 0, 21, 8, 4), 600),
-    new Sprite(spritesheet, 177, 0, 17, 7),
-    1, 10)
-  // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
-  // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
-];
 
 // init //
 function incLoader()
@@ -1586,8 +1579,23 @@ function incLoader()
       graphics.loadTexture(x[i], x[i].src.split('/').slice(-1)[0].replace(/\..+/g, ''));
     }
     GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
-    loadLevel(GLOBAL.LEVELS[0]);
     glSetup();
+
+    GLOBAL.WEAPONS = [
+      new Weapon("testpistol", null, true, 1, [0, 0], 1,
+        new TestPistolProjectile(0, 0, 10, 10, 8, 0,
+          new Sprite(graphics.textures.spritesheet, 0, 21, 8, 4), 100),
+        new Sprite(graphics.textures.spritesheet, 10, 22, 10, 6),
+        1, 0),
+      new Weapon("pesttistol", null, false, 5, [0, 0], 6,
+        new PumpProjectile(0, 0, 7.5, 7.5, 5, 10,
+          new Sprite(graphics.textures.spritesheet, 0, 21, 8, 4), 600),
+        new Sprite(graphics.textures.spritesheet, 177, 0, 17, 7),
+        1, 10)
+      // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
+      // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
+    ];
+    loadLevel(GLOBAL.LEVELS[0]);
     update();
   }
 }
@@ -1730,20 +1738,18 @@ function update()
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   graphics.fillRect(0,0,6,6);
   graphics.drawImage(graphics.textures.playersheet, player.x, player.y, 10, 18, 0, 41, 10, 18);
-  window.requestAnimationFrame(update);
-  return;
 
   
   let xmove = camera.x,
       ymove = camera.y;
     
-  ctx.clearRect(0,0,canvas.width, canvas.height);
+  //ctx.clearRect(0,0,canvas.width, canvas.height);
   bgctx.drawImage(GLOBAL.LEVEL.bg, 0, 0, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height, 0, 0, canvas.width, canvas.height);
   
-  ctx.translate(-xmove, -ymove);
+  //ctx.translate(-xmove, -ymove);
  
-  if (GLOBAL.LEVEL.tilemap.width >= 16)
-    ctx.drawImage(GLOBAL.LEVEL.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); 
+  //if (GLOBAL.LEVEL.tilemap.width >= 16)
+    //ctx.drawImage(GLOBAL.LEVEL.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); 
 
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
@@ -1755,9 +1761,9 @@ function update()
   {
     if (GLOBAL.WEAPONS[j].owner != null) GLOBAL.WEAPONS[j].update();
   }
-  camera.drawGUI(xmove, ymove);
+  //camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
-  ctx.translate(xmove, ymove);
+  //ctx.translate(xmove, ymove);
 }
 
 document.addEventListener('keydown', (key) =>
