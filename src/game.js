@@ -2155,4 +2155,3 @@ var Easings = {
 
   console.log(GLOBAL.LEVELS);
 })();
-// bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
