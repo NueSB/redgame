@@ -47,7 +47,8 @@ var GLOBAL = {
 
 let graphics = 
 {
-  drawColor: new Color({r: 255,g: 255,b: 255,a: 255}),
+  drawColor: new Color({r:255,g:255,b:255,a:255}),
+  tintColor: new Color({r:255,g:255,b:255,a:0}),
 
   rect: function(x,y,w,h)
   {
@@ -100,6 +101,11 @@ let graphics =
 
     gl.uniform2f(this.shader.vars['uResolution'].location, gl.canvas.width, gl.canvas.height);
     gl.uniform1i(this.shader.vars['uTexture'].location, 0);
+    gl.uniform4f(this.shader.vars['uTint'].location,
+    this.tintColor.r / 255,
+    this.tintColor.g / 255,
+    this.tintColor.b / 255,
+    this.tintColor.a / 255);
 
     let texmatrix = this.mat3.translation(sx / texture.width, sy / texture.height);
     texmatrix = this.mat3.multiply(texmatrix, this.mat3.scale(sw / texture.width, sh / texture.height));
@@ -296,10 +302,12 @@ let graphics =
       in vec2 vTexcoord;
       uniform sampler2D uTexture;
       out vec4 outCol;
+      uniform vec4 uTint;
 
       void main()
       {
         outCol = texture(uTexture, vTexcoord);
+        outCol.rgb = mix(outCol.rgb, uTint.rgb, uTint.a);
       }`
     }
   ],
@@ -381,11 +389,10 @@ function AnimatedSprite(src, x, y, w, h,
 function Color(obj)
 {
   let r = 0, g = 0, b = 0, a = 255;  // :puke:
-  a = 255;
   if (obj.hex)
   {
     let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
-    r = cols[0], g = cols[1], b = cols[2], a = 255;
+    r = cols[0], g = cols[1], b = cols[2]; a = (obj.a !== undefined ? obj.a : 255);
   }
   return {
     r: obj.r || r,
@@ -641,9 +648,7 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
     },
 
     draw: function()
-    {
-      //ctx.textStyle = "14px monospace";
-      
+    { 
       let rotated = (this.direction == 360 || (this.direction == 180));
       if (rotated)
       {
@@ -658,7 +663,7 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
         let amt = this.direction + 90 + (180 * this.owner.facing);
         if (GLOBAL.GRAVITY < 0)
         {
-          //amt -= 180;
+          amt -= 180;
         }
         //ctx.rotate(amt * Math.PI/180);
         this.sprite.draw(origin, 0,
@@ -1065,12 +1070,15 @@ function Player(x, y)
 
     draw: function()
     {
+      let c = graphics.tintColor;
+      graphics.tintColor = new Color({hex:"#AA00FF", a:0});
       if (this.vy === 0 && (this.vx < -1 || this.vx > 1))
       {
         if (this.facing === 1) this.walkSpriteB.draw(this.x, this.y, this.walkSprite.w, this.walkSprite.h);
         else this.walkSprite.draw(this.x, this.y, this.walkSprite.w, this.walkSprite.h);
       }
       else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
+      //graphics.tintColor = c;
     },
   };
   GLOBAL.OBJECTS.push(obj);
@@ -1258,7 +1266,7 @@ function EyeGiver(x, y)
     draw: function()
     {
       ctx.beginPath();
-      ctx.fillStyle = GLOBAL.LEVEL.color.toString();
+      graphics.drawColor = GLOBAL.LEVEL.color;
       ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
       ctx.fill();
     }
@@ -1385,7 +1393,7 @@ function BulletFlash(x, y)
     xscale: 15,
     yscale: 15,
     tick: 0,
-    sprite: new AnimatedSprite(spritesheet, 181, 49, 15, 15, 0, 5, 3, 0, false),
+    sprite: new AnimatedSprite(graphics.textures.spritesheet, 181, 49, 15, 15, 0, 5, 3, 0, false),
     update: function()
     {
        this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
@@ -1505,7 +1513,7 @@ function SlideDoor(x, y, w, h, heavy=0, side=0, sprite)
       }
       if (this.sprite === undefined)
       {
-        //ctx.fillStyle = GLOBAL.LEVEL.color;
+        graphics.drawColor = GLOBAL.LEVEL.color;
         graphics.fillRect(this.x, this.y, this.xscale, this.yscale)
       } else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
     }
@@ -1734,7 +1742,7 @@ function update()
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(0.1, 0, 0, 0);
+  gl.clearColor(0.1, 0, 0, 0.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
   graphics.setShader(0);
   gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
