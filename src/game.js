@@ -1748,7 +1748,6 @@ function update()
   gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
   graphics.fillRect(0,0,6,6);
-  graphics.drawImage(graphics.textures.playersheet, player.x, player.y, 10, 18, 0, 41, 10, 18);
 
   
   let xmove = camera.x,
@@ -1759,7 +1758,7 @@ function update()
   //ctx.translate(-xmove, -ymove);
  
   if (GLOBAL.LEVEL.tilemap.width >= 16)
-    bgctx.drawImage(GLOBAL.LEVEL.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); 
+  graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, 0, 0, 360, 240);
 
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
@@ -1894,6 +1893,7 @@ function loadLevel(level, entrance=0)
   new SlideTransition(0, false, 0);
 
   loadTileMap(tiles);
+  graphics.loadTexture(GLOBAL.LEVEL.tilemap, 'tilemap');
 }
 
 function loadBG(index)
