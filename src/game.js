@@ -8,9 +8,10 @@ var spritesheet = new Image(),
 //
 // game
 //
-var canvas = document.getElementById('c');
-var ctx = canvas.getContext("2d");
 
+var canvas = document.getElementById('c');
+var gl = canvas.getContext("webgl2", {antialias: false});
+let posBuffer = gl.createBuffer();
 var TIME = {
   frame: 0
 };
@@ -19,13 +20,13 @@ var GLOBAL = {
   OBJECTS: [],
   KEYS: new Map(),
   GRAVITY: 1.0,
-  FONT: new Sprite(),
+  //FONT: new Sprite(),
   LEVELINDEX: 0,
   LEVEL:
   {
     width: 1280,
     height: 720,
-    color: "#AA11FF",
+    color: new Color({hex: "#AA11FF"}),
     bgColor: "",
     bgscroll: [0,0],
     bg: document.querySelector('#bg'),
@@ -44,6 +45,290 @@ var GLOBAL = {
   }
 };
 
+let graphics = 
+{
+  drawColor: new Color({r:255,g:255,b:255,a:255}),
+  tintColor: new Color({r:255,g:255,b:255,a:0}),
+  bgTint: new Color({r:0,g:0,b:0,a:0}),
+  globalTransform: 0,
+
+  rect: function(x,y,w,h)
+  {
+    let matrix = this.mat3.multiply(this.globalTransform, this.mat3.translation(x,y));
+    let scale = this.mat3.scale(w, h);
+    matrix = this.mat3.multiply(matrix, scale);
+    gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, matrix);
+  },
+  
+  drawRect: function(x, y, w, h)
+  {
+    this.rect(x,y,w,h);
+    
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  },
+
+  fillRect: function(x, y, w, h)
+  {
+    this.setShader(0);
+    gl.uniform4f(this.shader.vars['uColor'].location, 
+    this.drawColor.r / 255, this.drawColor.g / 255, this.drawColor.b / 255, this.drawColor.a / 255); 
+    this.drawRect(x,y,w,h);
+  },
+
+  setShader: function(shader)
+  {
+    this.shader = this.programs[shader];
+    gl.useProgram(this.shader.program)
+  },
+
+  drawImage: function(texture, sx = 0, sy = 0, sw, sh, dx, dy, dw, dh)
+  {
+    this.setShader(1);
+    if (dw === undefined) 
+    {
+      dw = texture.width;
+    }
+    if (dh === undefined)
+    {
+      dh = texture.height;
+    } 
+    if (sx === undefined) sx = 0;
+    if (sy === undefined) sy = 0;
+    if (sw === undefined) sw = texture.width;
+    if (sh === undefined) sh = texture.height;
+    
+ 
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture.texture);
+
+    gl.uniform2f(this.shader.vars['uResolution'].location, gl.canvas.width, gl.canvas.height);
+    gl.uniform1i(this.shader.vars['uTexture'].location, 0);
+    gl.uniform4f(this.shader.vars['uTint'].location,
+    this.tintColor.r / 255,
+    this.tintColor.g / 255,
+    this.tintColor.b / 255,
+    this.tintColor.a / 255);
+
+    let texmatrix = this.mat3.translation(sx / texture.width, sy / texture.height);
+    texmatrix = this.mat3.multiply(texmatrix, this.mat3.scale(sw / texture.width, sh / texture.height));
+    gl.uniformMatrix3fv(this.shader.vars['uTexMatrix'].location, false, texmatrix);
+
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+    this.drawRect(dx, dy, dw, dh);
+  },
+
+  loadTexture: function(src, name)
+{
+  let tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  let textureObj = {
+    width: 1,
+    height: 1,
+    texture: tex
+  };
+
+  if (typeof(src) === String)
+  {
+    let img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = src;
+    console.log('loadimage, src='+src);
+
+    img.onload = function()
+    {
+      textureObj.width = img.width,
+      textureObj.height = img.height;
+
+      gl.bindTexture(gl.TEXTURE_2D, textureObj.texture);
+    
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      this.textures[name] = textureObj;
+      //incLoader();
+    }
+  } else 
+  {
+    textureObj.width = src.width,
+    textureObj.height = src.height;
+
+    gl.bindTexture(gl.TEXTURE_2D, textureObj.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    //gl.generateMipmap(gl.TEXTURE_2D);
+    this.textures[name] = textureObj;
+  }
+  console.log(textureObj);
+  return textureObj;
+},
+
+  translate: function(x, y)
+  {
+    this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.translation(x, y));
+  },
+
+  rotate: function(radAngle)
+  {
+    this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.rotation(radAngle))
+  },
+  
+  mat3: {
+    identity: function()
+    {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1
+      ];
+    },
+
+    translation: function(x, y)
+    {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        x, y, 1
+      ];
+    },
+
+    rotation: function(radAngle)
+    {
+      let s = Math.sin(radAngle),
+          c = Math.cos(radAngle);
+      return [
+        c, -s, 0,
+        s,  c, 0,
+        0,  0, 1
+      ];
+    },
+
+    scale: function(x, y)
+    {
+      return [
+        x, 0, 0,
+        0, y, 0,
+        0, 0, 1
+      ];
+    },
+
+    multiply: function(a, b) { // TODO: beautify me
+      var a00 = a[0 * 3 + 0];
+      var a01 = a[0 * 3 + 1];
+      var a02 = a[0 * 3 + 2];
+      var a10 = a[1 * 3 + 0];
+      var a11 = a[1 * 3 + 1];
+      var a12 = a[1 * 3 + 2];
+      var a20 = a[2 * 3 + 0];
+      var a21 = a[2 * 3 + 1];
+      var a22 = a[2 * 3 + 2];
+      var b00 = b[0 * 3 + 0];
+      var b01 = b[0 * 3 + 1];
+      var b02 = b[0 * 3 + 2];
+      var b10 = b[1 * 3 + 0];
+      var b11 = b[1 * 3 + 1];
+      var b12 = b[1 * 3 + 2];
+      var b20 = b[2 * 3 + 0];
+      var b21 = b[2 * 3 + 1];
+      var b22 = b[2 * 3 + 2];
+      return [
+        b00 * a00 + b01 * a10 + b02 * a20,
+        b00 * a01 + b01 * a11 + b02 * a21,
+        b00 * a02 + b01 * a12 + b02 * a22,
+        b10 * a00 + b11 * a10 + b12 * a20,
+        b10 * a01 + b11 * a11 + b12 * a21,
+        b10 * a02 + b11 * a12 + b12 * a22,
+        b20 * a00 + b21 * a10 + b22 * a20,
+        b20 * a01 + b21 * a11 + b22 * a21,
+        b20 * a02 + b21 * a12 + b22 * a22,
+      ];
+    }
+  },
+
+  shader: null,
+  
+  shaders: [
+    {
+      name: "baseColor",
+      vert: `#version 300 es
+      in vec2 pos;
+      uniform vec2 uResolution;
+      uniform mat3 uMatrix;
+    
+      void main()
+      {
+        vec2 position = (uMatrix * vec3(pos.xy, 1)).xy;
+        // pixels -> 0 <-> 1
+        vec2 zerotoone = position / uResolution;
+    
+        vec2 zeroto2 = zerotoone * 2.0;
+        // 0 <-> 2 --> -1 <-> 1 (clipspace)
+        vec2 clipSpace = zeroto2 - 1.0;
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+      }`,
+    
+      frag: `#version 300 es
+      precision mediump float;
+      
+      uniform vec4 uColor;
+      out vec4 col;
+      void main()
+      {
+        col = uColor;
+      }`,
+    },
+
+    {
+      name: "texture",
+      vert: `#version 300 es
+      in vec2 aPos;
+      in vec2 aTexcoord;
+      
+      uniform vec2 uResolution;
+      uniform mat3 uMatrix;
+      uniform mat3 uTexMatrix;
+      out vec2 vTexcoord;
+      
+      void main()
+      {
+        vec2 position = (uMatrix * vec3(aPos.xy, 1)).xy;
+        // pixels -> 0 <-> 1
+        vec2 zerotoone = position / uResolution;
+    
+        vec2 zeroto2 = zerotoone * 2.0;
+        // 0 <-> 2 --> -1 <-> 1 (clipspace)
+        vec2 clipSpace = zeroto2 - 1.0;
+
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+        vTexcoord = (uTexMatrix * vec3(aTexcoord, 1)).xy;
+      }`,
+
+      frag: `#version 300 es
+      precision mediump float;
+      
+      in vec2 vTexcoord;
+      uniform sampler2D uTexture;
+      out vec4 outCol;
+      uniform vec4 uTint;
+
+      void main()
+      {
+        outCol = texture(uTexture, vTexcoord);
+        outCol.rgb = mix(outCol.rgb, uTint.rgb, uTint.a);
+      }`
+    }
+  ],
+
+  programs: [],
+
+  textures: {}
+};
+
 // classes //
 
 function Sprite(src, x, y, w, h)
@@ -55,7 +340,7 @@ function Sprite(src, x, y, w, h)
     w: w,
     h: h,
 
-    draw: function(xpos, ypos, xscale, yscale, canvas=ctx)
+    draw: function(xpos, ypos, xscale, yscale, canvas=graphics)
     {
       canvas.drawImage(this.src,
         this.x,
@@ -98,7 +383,7 @@ function AnimatedSprite(src, x, y, w, h,
 
   a.draw = function(xpos, ypos, xscale, yscale)
   {
-    ctx.drawImage(a.src,
+    graphics.drawImage(a.src,
       a.x + (a.w * a.frame) + a.offset,
       a.y,
       a.w,
@@ -116,11 +401,11 @@ function AnimatedSprite(src, x, y, w, h,
 function Color(obj)
 {
   let r = 0, g = 0, b = 0, a = 255;  // :puke:
-  a = 255;
+  a = (obj.a !== undefined ? obj.a : 255);
   if (obj.hex)
   {
     let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
-    r = cols[0], g = cols[1], b = cols[2], a = 255;
+    r = cols[0], g = cols[1], b = cols[2]; 
   }
   return {
     r: obj.r || r,
@@ -376,9 +661,7 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
     },
 
     draw: function()
-    {
-      ctx.textStyle = "14px monospace";
-      
+    { 
       let rotated = (this.direction == 360 || (this.direction == 180));
       if (rotated)
       {
@@ -389,17 +672,13 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
           pos = [this.x + this.sprite.w, this.y];
           origin = -this.sprite.w
         }
-        ctx.translate(pos[0], pos[1]);
+        graphics.translate(pos[0], pos[1]);
         let amt = this.direction + 90 + (180 * this.owner.facing);
-        if (GLOBAL.GRAVITY < 0)
-        {
-          //amt -= 180;
-        }
-        ctx.rotate(amt * Math.PI/180);
+        graphics.rotate(-amt * Math.PI/180);
         this.sprite.draw(origin, 0,
           this.sprite.w * this.size, this.sprite.h * this.size);
-        ctx.rotate(-amt * Math.PI/180);
-        ctx.translate(-pos[0], -pos[1]);
+        graphics.rotate(amt * Math.PI/180);
+        graphics.translate(-pos[0], -pos[1]);
         if (this.owner.facing === 1)
         {
           this.x -= this.sprite.w;
@@ -546,10 +825,10 @@ function Player(x, y)
     grounded: false,
     jumping: false,
     hp: 3,
-    sprite: new Sprite(playersheet, 0, 41, 10, 18),
-    TMPsprite: new Sprite(spritesheet, 0, 0, 5, 9),
-    walkSprite: new AnimatedSprite(playersheet, 1, 0, 12, 20, 0, 5, 4, 0, true),
-    walkSpriteB: new AnimatedSprite(playersheet, 72, 0, 12, 20, 0, 5, 4, 0, true),
+    sprite: new Sprite(graphics.textures.playersheet, 0, 41, 10, 18),
+    TMPsprite: new Sprite(graphics.textures.spritesheet, 0, 0, 5, 9),
+    walkSprite: new AnimatedSprite(graphics.textures.playersheet, 1, 0, 12, 20, 0, 5, 4, 0, true),
+    walkSpriteB: new AnimatedSprite(graphics.textures.playersheet, 72, 0, 12, 20, 0, 5, 4, 0, true),
     weapon: null,
     weaponIndex: 0,
     weapons: [],
@@ -800,12 +1079,14 @@ function Player(x, y)
 
     draw: function()
     {
+      
       if (this.vy === 0 && (this.vx < -1 || this.vx > 1))
       {
         if (this.facing === 1) this.walkSpriteB.draw(this.x, this.y, this.walkSprite.w, this.walkSprite.h);
         else this.walkSprite.draw(this.x, this.y, this.walkSprite.w, this.walkSprite.h);
       }
       else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
+      
     },
   };
   GLOBAL.OBJECTS.push(obj);
@@ -829,8 +1110,9 @@ function Wall(x, y, w, h, i = false)
       {
         return;
       }
-       ctx.fillStyle = GLOBAL.LEVEL.color;
-       ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+       graphics.drawColor = GLOBAL.LEVEL.color;
+       //bgctx.fillText(graphics.drawColor, this.x, this.y)
+       graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   }
   GLOBAL.OBJECTS.push(obj);
@@ -857,20 +1139,16 @@ function Camera(target)
 
     drawGUI: function(x, y)
     {
+      //console.log(this.overlay);
       if (this.overlay != null) 
       {
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.95;
         this.overlay.draw(x, y, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
-        ctx.globalAlpha = 1.0;
-        ctx.globalCompositeOperation = 'source-over';
       }
-      ctx.drawImage(spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
+      graphics.drawImage(graphics.textures.spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       if (this.target.type === "Player")
       { 
-        let c = GLOBAL.LEVEL.color;
-        ctx.fillStyle = c.toString();
-        ctx.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
+        graphics.drawColor = GLOBAL.LEVEL.color;
+        graphics.fillRect(x + 3, y+3, 73 * (this.target.hp / 3)-4, 4);
         for(let i = GLOBAL.WEAPONS[player.weaponIndex]; i < GLOBAL.WEAPONS.length; i++)
         {
           let wep = GLOBAL.WEAPONS[i].sprite;
@@ -916,8 +1194,8 @@ function SlideTransition(speed, out, lvl, entranceID=0)
       this.x = camera.x;
       this.y = camera.y;
       this.w += this.timer;
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(this.x, this.y, this.w, this.h);
+      graphics.drawColor = new Color({hex: "#000000"});
+      graphics.fillRect(this.x, this.y, this.w, this.h);
       
       if (this.out && this.w >= canvas.width) 
       {
@@ -959,9 +1237,9 @@ function EyeGiver(x, y)
 
         GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
                                            b: progress * 140/5}));
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
+        graphics.drawColor = new Color({hex: "#FFFFFF"});
+        //ctx.beginPath();
+        //ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
         if (true) {} else {
           this.x = player.x,
           this.y = player.y;
@@ -972,9 +1250,9 @@ function EyeGiver(x, y)
             this.x = this.parent.x + ((this.x - this.parent.x) * (this.centerScale / distance));
             this.y = this.parent.y + ((this.y - this.parent.y) * (this.centerScale / distance));
           }
-          ctx.arc(this.x, this.y, size, 0, 2 * Math.PI, false);
+          //ctx.arc(this.x, this.y, size, 0, 2 * Math.PI, false);
         }
-        ctx.fill();
+        //ctx.fill();
       }
     },
 
@@ -991,10 +1269,10 @@ function EyeGiver(x, y)
 
     draw: function()
     {
-      ctx.beginPath();
-      ctx.fillStyle = GLOBAL.LEVEL.color.toString();
-      ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
-      ctx.fill();
+      //ctx.beginPath();
+      graphics.drawColor = GLOBAL.LEVEL.color;
+      //ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
+      //ctx.fill();
     }
   }
   obj.eye.parent = obj;
@@ -1011,7 +1289,7 @@ function GuardEye(x, y, w, h)
     ogY: y,
     xscale: w,
     yscale: h,
-    sprite: new Sprite(enemysheet, 0, 0, 76, 172),
+    sprite: new Sprite(graphics.textures.enemysheet, 0, 0, 76, 172),
     dFlash: {
       amt: 40,
       current: 0,
@@ -1050,7 +1328,7 @@ function GuardEye(x, y, w, h)
         let c = new Projectile(this.x, this.y + this.yscale/1.5, b.w * 2, b.h * 2, randrange(5,9), randrange(90, 360), b.sprite, randrange(60,75)).cUpdate = b.cUpdate;
         this.xscale = 0; this.yscale = 0;
       }
-      this.sprite = new Sprite(enemysheet, 152, 0, 76, 172);
+      this.sprite = new Sprite(graphics.textures.enemysheet, 152, 0, 76, 172);
       //arrayRemove(this, GLOBAL.OBJECTS);
     },
 
@@ -1063,7 +1341,11 @@ function GuardEye(x, y, w, h)
         this.y += randrange(count, -count);
         this.x += randrange(count, -count);
       }
-
+      if (this.dead)
+      {
+        graphics.bgTint = new Color({r: Math.sin(TIME.frame/30)*255, g: 0.01, a: Math.sin(TIME.frame/300)*255});
+  GLOBAL.LEVEL.color = new Color({r: Math.sin(TIME.frame/30)*15, g: 0, b:0});
+      }
       this.dFlash.current = max(this.dFlash.current-1, 0);
       this.dFlash.shakeCur = max(this.dFlash.shakeCur-1, 0);
       this.draw();
@@ -1071,14 +1353,17 @@ function GuardEye(x, y, w, h)
 
     draw: function()
     {
+      let c = graphics.tintColor;
+      
       if (!this.dead)
       {
         if (this.dFlash.current > 0) 
         {
-          this.sprite.x = 76;
-        } else this.sprite.x = 0; 
-      }
+          graphics.tintColor = new Color({hex: "#FFFFFF"});
+        }
+      } else graphics.tintColor = GLOBAL.LEVEL.color;
       this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
+      graphics.tintColor = c;
     }
   }
   GLOBAL.OBJECTS.push(obj);
@@ -1102,8 +1387,8 @@ function CollisionRoomChanger(x,y,w,h,level=GLOBAL.LEVELINDEX+1,entranceID=0)
       {
         new SlideTransition(0, true, this.level, this.entranceID);
       }
-      ctx.strokeStyle = "#FF0000";
-      ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
+      //ctx.strokeStyle = "#FF0000";
+      //ctx.strokeRect(this.x, this.y, this.xscale, this.yscale);
     }
 
     }
@@ -1119,7 +1404,7 @@ function BulletFlash(x, y)
     xscale: 15,
     yscale: 15,
     tick: 0,
-    sprite: new AnimatedSprite(spritesheet, 181, 49, 15, 15, 0, 5, 3, 0, false),
+    sprite: new AnimatedSprite(graphics.textures.spritesheet, 181, 49, 15, 15, 0, 5, 3, 0, false),
     update: function()
     {
        this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
@@ -1183,8 +1468,8 @@ function ElevatorPlatform(x, y, w, h)
 
     draw: function()
     {
-      ctx.fillStyle = GLOBAL.LEVEL.color;
-      ctx.fillRect(this.x, this.y, this.xscale, this.yscale);
+      graphics.drawColor = GLOBAL.LEVEL.color;
+      graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   }
 
@@ -1239,8 +1524,8 @@ function SlideDoor(x, y, w, h, heavy=0, side=0, sprite)
       }
       if (this.sprite === undefined)
       {
-        ctx.fillStyle = GLOBAL.LEVEL.color;
-        ctx.fillRect(this.x, this.y, this.xscale, this.yscale)
+        graphics.drawColor = GLOBAL.LEVEL.color;
+        graphics.fillRect(this.x, this.y, this.xscale, this.yscale)
       } else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
     }
   }
@@ -1253,7 +1538,7 @@ function SaveStation(x, y)
   let obj = {
     x: x,
     y: y,
-    sprite: new Sprite(spritesheet,0,44,44,20),
+    sprite: new Sprite(graphics.textures.spritesheet,0,44,44,20),
     xscale: 0,
     yscale: 0,
     solid: true,
@@ -1285,7 +1570,7 @@ function hmm(x, y)
     y: y,
     time: 0,
     xscale: 0, yscale: 0,
-    sprite: new Sprite(playersheet, 21, 41, 4, 7),
+    sprite: new Sprite(graphics.textures.playersheet, 21, 41, 4, 7),
     update: function()
     {
       ++this.time;
@@ -1298,46 +1583,164 @@ function hmm(x, y)
   return obj;
 }
 
-let player = new Player(0, 0),
-  camera = new Camera(player);
+var player = new Player(0, 0),
+    camera = new Camera(player);
 
-GLOBAL.WEAPONS = [
-  new Weapon("testpistol", null, true, 1, [0, 0], 1,
-    new TestPistolProjectile(0, 0, 10, 10, 8, 0,
-      new Sprite(spritesheet, 0, 21, 8, 4), 100),
-    new Sprite(spritesheet, 10, 22, 10, 6),
-    1, 0),
-  new Weapon("pesttistol", null, false, 5, [0, 0], 6,
-    new PumpProjectile(0, 0, 7.5, 7.5, 5, 10,
-      new Sprite(spritesheet, 0, 21, 8, 4), 600),
-    new Sprite(spritesheet, 177, 0, 17, 7),
-    1, 10)
-  // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
-  // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
-];
 
 // init //
 function incLoader()
 {
+  console.log('load');
   loadProgress++;
-  if (loadProgress >= 5) update();
+  if (loadProgress >= 5) 
+  {
+    let x = [spritesheet, bgsheet, enemysheet, tilesheet, playersheet];
+    for(let i = 0; i < x.length; i++)
+    {
+      //console.log(x[i].crossOrigin);
+      graphics.loadTexture(x[i], x[i].src.split('/').slice(-1)[0].replace(/\..+/g, ''));
+    }
+    GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
+    glSetup();
+
+    GLOBAL.WEAPONS = [
+      new Weapon("testpistol", null, true, 1, [0, 0], 1,
+        new TestPistolProjectile(0, 0, 10, 10, 8, 0,
+          new Sprite(graphics.textures.spritesheet, 0, 21, 8, 4), 100),
+        new Sprite(graphics.textures.spritesheet, 10, 22, 10, 6),
+        1, 0),
+      new Weapon("pesttistol", null, false, 5, [0, 0], 6,
+        new PumpProjectile(0, 0, 7.5, 7.5, 5, 10,
+          new Sprite(graphics.textures.spritesheet, 0, 21, 8, 4), 600),
+        new Sprite(graphics.textures.spritesheet, 177, 0, 17, 7),
+        1, 10)
+      // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
+      // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
+    ];
+    if (localStorage.save0 != undefined)
+      loadGame(0);
+    else loadLevel(GLOBAL.LEVELS[0]);
+    update();
+  }
 }
 
-spritesheet.onload = function()
-{
-  ctx.imageSmoothingEnabled = false;
-  GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
-  incLoader();
-};
+//
+// ---------------------------------------------------
+//
 
-bgsheet.onload = incLoader();
-playersheet.onload = incLoader();
-enemysheet.onload = incLoader();
-tilesheet.onload = function()
+function glSetup()
 {
-  loadLevel(GLOBAL.LEVELS[0]);
-  incLoader();
-};
+  for(let i = 0; i < graphics.shaders.length; i++)
+  {
+    graphics.programs.push(generateProgram(i));
+    console.log(graphics.programs);
+  }
+  graphics.setShader(0);
+  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
+
+  if (graphics.globalTransform == 0)    graphics.globalTransform = graphics.mat3.identity();
+  console.log(graphics.tintColor.toString());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      0, 0,
+      0, 1,
+      1, 1,
+      1, 1,
+      1, 0,
+      0, 0
+    ]), gl.STATIC_DRAW);
+}
+
+function createShader(gl, type, src)
+{
+  let shader = gl.createShader(type);
+  gl.shaderSource(shader, src);
+  gl.compileShader(shader);
+  let woke = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+  if (woke) return shader;
+
+  console.log(gl.getShaderInfoLog(shader));
+  gl.deleteShader(shader);
+}
+
+function createProgram(gl, vert, frag)
+{
+  let program = gl.createProgram();
+  gl.attachShader(program, vert);
+  gl.attachShader(program, frag);
+  gl.linkProgram(program);
+  let woke = gl.getProgramParameter(program, gl.LINK_STATUS)
+  if (woke) return program;
+
+  console.log(gl.getProgramInfoLog(program));
+  gl.deleteProgram(program);
+}
+
+function generateProgram(index)
+{
+  let vertShader = createShader(gl, gl.VERTEX_SHADER, graphics.shaders[index].vert);
+  let fragShader = createShader(gl, gl.FRAGMENT_SHADER, graphics.shaders[index].frag);
+
+  let program = createProgram(gl, vertShader, fragShader);
+
+
+  let posBuffer = gl.createBuffer();
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+
+  let vertArray = gl.createVertexArray();
+  gl.bindVertexArray(vertArray);
+  let vars = {};
+  // start finding vars...
+  let vertstr = graphics.shaders[index].vert;
+  let fragstr = graphics.shaders[index].frag;
+
+  let vertvars = vertstr.slice(15, vertstr.indexOf('void')).split('\n').map(x => x.trim().slice(0,-1)).filter(y => y != '').map(z => z.split(' '));
+  let fragvars = fragstr.slice(15, fragstr.indexOf('void')).split('\n').map(x => x.trim().slice(0,-1)).filter(y => y != '').map(z => z.split(' '));
+  // god
+    let curVar = null,
+        varLocation = null;
+        buffers = [],
+        vertArrays = [];
+
+  for (let x = 0; x < vertvars.length; x++)
+  {
+    curVar = vertvars[x];
+    if (curVar[0] === 'out') continue;
+    else if (curVar[0] == 'uniform')
+    {
+      varLocation = gl.getUniformLocation(program, curVar[2]);
+    }
+      else if (curVar[0] == 'attribute' || curVar[0] == 'in')
+    {
+      varLocation = gl.getAttribLocation(program, curVar[2]);
+      gl.enableVertexAttribArray(varLocation);
+      gl.vertexAttribPointer(varLocation, 2, gl.FLOAT, false, 0, 0);
+    }
+
+    vars[curVar[2]] = {
+      location: varLocation,
+      type: curVar[1],
+      };
+  }
+  for (x = 0; x < fragvars.length; x++) 
+  {
+    curVar = fragvars[x];
+    if (curVar[0] === 'out') continue;
+    else if (curVar[0] === 'uniform') 
+      varLocation = gl.getUniformLocation(program, curVar[2]);
+    else if (curVar[0] === 'attribute' || curVar[0] === 'in')
+      varLocation = gl.getAttribLocation(program, curVar[2]);
+
+      vars[curVar[2]] = {
+        location: varLocation,
+        type: curVar[1],
+        };
+  }
+  return {program: program, vars: vars, vertArrays};
+}
+
+
 // main loop //
 
 // what??
@@ -1352,17 +1755,25 @@ tilesheet.onload = function()
 function update()
 {
   ++TIME.frame;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.clearColor(graphics.bgTint.r/255,
+   graphics.bgTint.g/255,
+   graphics.bgTint.b/255, 
+   graphics.bgTint.a/255);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
   
   let xmove = camera.x,
       ymove = camera.y;
-    
-  ctx.clearRect(0,0,canvas.width, canvas.height);
+  
   bgctx.drawImage(GLOBAL.LEVEL.bg, 0, 0, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height, 0, 0, canvas.width, canvas.height);
   
-  ctx.translate(-xmove, -ymove);
+  graphics.translate(-xmove, -ymove);
  
   if (GLOBAL.LEVEL.tilemap.width >= 16)
-    ctx.drawImage(GLOBAL.LEVEL.tilemap, xmove, ymove, canvas.width, canvas.height, xmove, ymove, canvas.width, canvas.height); 
+    graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, xmove, ymove, 360, 240);
 
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
@@ -1376,7 +1787,7 @@ function update()
   }
   camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
-  ctx.translate(xmove, ymove);
+  graphics.translate(xmove, ymove);
 }
 
 document.addEventListener('keydown', (key) =>
@@ -1449,7 +1860,9 @@ function loadLevel(level, entrance=0)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
-  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
+  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); 
+  console.log(GLOBAL.LEVEL.color);
+  GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
   {
@@ -1464,7 +1877,8 @@ function loadLevel(level, entrance=0)
     //if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
   camera.overlay = null;
-  if (settings[4] != "") camera.overlay = loadOverlay(settings[4]);
+  console.log(settings);
+  if (settings[4] != '-1' && settings[4] != '') camera.overlay = loadOverlay(settings[4]);
 
   // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
   for (let i = 0; i < GLOBAL.WEAPONS.length; i++)
@@ -1494,6 +1908,7 @@ function loadLevel(level, entrance=0)
   new SlideTransition(0, false, 0);
 
   loadTileMap(tiles);
+  graphics.loadTexture(GLOBAL.LEVEL.tilemap, 'tilemap');
 }
 
 function loadBG(index)
@@ -1518,7 +1933,7 @@ function loadBG(index)
 
 function loadOverlay(index)
 {
-  return new Sprite(bgsheet, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height * index, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
+  return new Sprite(graphics.textures.bgsheet, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height * index, 360, 240);
 }
 
 function loadTileMap(tilemap)
@@ -1754,5 +2169,12 @@ var Easings = {
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
   GLOBAL.LEVELS = [`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,144|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,48,207|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`#000000|#7d0239|360|240|1|---|0,176,304|1|2,-16,208,144,144,1|2,0,0,16,224,1|2,352,0,16,224,1|2,-16,-192,144,208,1|2,240,208,144,144,1|2,240,-192,144,208,1|2,112,352,144,16,1|2,112,-192,144,16,1|2,144,336,80,16,1|2,224,0,16,16,1|2,128,0,16,16,1|---|0,240,208|2,112,208|1,16,208,96,16|1,256,208,96,16|5,128,0|3,224,0,16,16|7,240,0,112,16|7,16,0,112,16|3,352,16,16,192|5,0,16,16,192|4,352,208|4,352,0|4,0,0|4,-16,224,128,128|4,0,208,16,16|4,-128,224|3,240,224,16,112|5,112,224,16,128|4,256,224,112,112|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
-})()
-// bg bgsx bgsy | col | w | h | overlay |---| objs |---|tiles|
+
+  spritesheet.onload = incLoader();
+  bgsheet.onload = incLoader();
+  playersheet.onload = incLoader();
+  enemysheet.onload = incLoader();
+  tilesheet.onload = incLoader();
+
+  console.log(GLOBAL.LEVELS);
+})();
