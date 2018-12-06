@@ -173,6 +173,11 @@ let graphics =
     this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.translation(x, y));
   },
 
+  rotate: function(radAngle)
+  {
+    this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.rotation(radAngle))
+  },
+  
   mat3: {
     identity: function()
     {
@@ -667,17 +672,17 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
           pos = [this.x + this.sprite.w, this.y];
           origin = -this.sprite.w
         }
-        //ctx.translate(pos[0], pos[1]);
+        graphics.translate(pos[0], pos[1]);
         let amt = this.direction + 90 + (180 * this.owner.facing);
         if (GLOBAL.GRAVITY < 0)
         {
           amt -= 180;
         }
-        //ctx.rotate(amt * Math.PI/180);
+        graphics.rotate(-amt * Math.PI/180);
         this.sprite.draw(origin, 0,
           this.sprite.w * this.size, this.sprite.h * this.size);
-        //ctx.rotate(-amt * Math.PI/180);
-        //ctx.translate(-pos[0], -pos[1]);
+        graphics.rotate(amt * Math.PI/180);
+        graphics.translate(-pos[0], -pos[1]);
         if (this.owner.facing === 1)
         {
           this.x -= this.sprite.w;
@@ -1141,11 +1146,7 @@ function Camera(target)
       //console.log(this.overlay);
       if (this.overlay != null) 
       {
-        //ctx.globalCompositeOperation = 'multiply';
-        //ctx.globalAlpha = 0.95;
         this.overlay.draw(x, y, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
-        //ctx.globalAlpha = 1.0;
-        //ctx.globalCompositeOperation = 'source-over';
       }
       graphics.drawImage(graphics.textures.spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       if (this.target.type === "Player")
