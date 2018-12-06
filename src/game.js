@@ -674,10 +674,6 @@ function Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, siz
         }
         graphics.translate(pos[0], pos[1]);
         let amt = this.direction + 90 + (180 * this.owner.facing);
-        if (GLOBAL.GRAVITY < 0)
-        {
-          amt -= 180;
-        }
         graphics.rotate(-amt * Math.PI/180);
         this.sprite.draw(origin, 0,
           this.sprite.w * this.size, this.sprite.h * this.size);
@@ -1759,7 +1755,6 @@ function generateProgram(index)
 function update()
 {
   ++TIME.frame;
-  //lets get shit VISUAL before we start gamestuff
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
