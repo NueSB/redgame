@@ -49,10 +49,12 @@ let graphics =
 {
   drawColor: new Color({r:255,g:255,b:255,a:255}),
   tintColor: new Color({r:255,g:255,b:255,a:0}),
+  bgTint: new Color({r:0,g:0,b:0,a:0}),
+  globalTransform: 0,
 
   rect: function(x,y,w,h)
   {
-    let matrix = this.mat3.translation(x, y);
+    let matrix = this.mat3.multiply(this.globalTransform, this.mat3.translation(x,y));
     let scale = this.mat3.scale(w, h);
     matrix = this.mat3.multiply(matrix, scale);
     gl.uniformMatrix3fv(this.shader.vars['uMatrix'].location, false, matrix);
@@ -165,6 +167,11 @@ let graphics =
   console.log(textureObj);
   return textureObj;
 },
+
+  translate: function(x, y)
+  {
+    this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.translation(x, y));
+  },
 
   mat3: {
     identity: function()
@@ -1234,8 +1241,8 @@ function EyeGiver(x, y)
         GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
                                            b: progress * 140/5}));
         graphics.drawColor = new Color({hex: "#FFFFFF"});
-        ctx.beginPath();
-        ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
+        //ctx.beginPath();
+        //ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
         if (true) {} else {
           this.x = player.x,
           this.y = player.y;
@@ -1246,9 +1253,9 @@ function EyeGiver(x, y)
             this.x = this.parent.x + ((this.x - this.parent.x) * (this.centerScale / distance));
             this.y = this.parent.y + ((this.y - this.parent.y) * (this.centerScale / distance));
           }
-          ctx.arc(this.x, this.y, size, 0, 2 * Math.PI, false);
+          //ctx.arc(this.x, this.y, size, 0, 2 * Math.PI, false);
         }
-        ctx.fill();
+        //ctx.fill();
       }
     },
 
@@ -1265,10 +1272,10 @@ function EyeGiver(x, y)
 
     draw: function()
     {
-      ctx.beginPath();
+      //ctx.beginPath();
       graphics.drawColor = GLOBAL.LEVEL.color;
-      ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
-      ctx.fill();
+      //ctx.arc(this.x, this.y, this.scale * Easings.easeInOutCubic(this.animProgress), 0, 2 * Math.PI, false);
+      //ctx.fill();
     }
   }
   obj.eye.parent = obj;
@@ -1337,7 +1344,11 @@ function GuardEye(x, y, w, h)
         this.y += randrange(count, -count);
         this.x += randrange(count, -count);
       }
-
+      if (this.dead)
+      {
+        graphics.bgTint = new Color({r: Math.sin(TIME.frame/30)*255, g: 0.01, a: Math.sin(TIME.frame/300)*255});
+  GLOBAL.LEVEL.color = new Color({r: Math.sin(TIME.frame/30)*15, g: 0, b:0});
+      }
       this.dFlash.current = max(this.dFlash.current-1, 0);
       this.dFlash.shakeCur = max(this.dFlash.shakeCur-1, 0);
       this.draw();
@@ -1346,8 +1357,6 @@ function GuardEye(x, y, w, h)
     draw: function()
     {
       let c = graphics.tintColor;
-      //bgctx.fillStyle = "#00FF00";
-      //bgctx.fillText(graphics.tintColor, 360/2, 240/2)
       
       if (!this.dead)
       {
@@ -1355,8 +1364,7 @@ function GuardEye(x, y, w, h)
         {
           graphics.tintColor = new Color({hex: "#FFFFFF"});
         }
-      }
-      graphics.tintColor = GLOBAL.LEVEL.color;
+      } else graphics.tintColor = GLOBAL.LEVEL.color;
       this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
       graphics.tintColor = c;
     }
@@ -1612,7 +1620,9 @@ function incLoader()
       // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
       // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
     ];
-    loadGame(0);
+    if (localStorage.save0 != undefined)
+      loadGame(0);
+    else loadLevel(GLOBAL.LEVELS[0]);
     update();
   }
 }
@@ -1632,6 +1642,7 @@ function glSetup()
   gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
 
+  if (graphics.globalTransform == 0)    graphics.globalTransform = graphics.mat3.identity();
   console.log(graphics.tintColor.toString());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
       0, 0,
@@ -1751,8 +1762,10 @@ function update()
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(Math.sin(TIME.frame/30), 0.01, 0, Math.sin(TIME.frame/300));
-  GLOBAL.LEVEL.color = new Color({r: Math.sin(TIME.frame/30)*155, g: 0, b:0});
+  gl.clearColor(graphics.bgTint.r/255,
+   graphics.bgTint.g/255,
+   graphics.bgTint.b/255, 
+   graphics.bgTint.a/255);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   
@@ -1761,10 +1774,10 @@ function update()
   
   bgctx.drawImage(GLOBAL.LEVEL.bg, 0, 0, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height, 0, 0, canvas.width, canvas.height);
   
-  //ctx.translate(-xmove, -ymove);
+  graphics.translate(-xmove, -ymove);
  
   if (GLOBAL.LEVEL.tilemap.width >= 16)
-    graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, 0, 0, 360, 240);
+    graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, xmove, ymove, 360, 240);
 
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
@@ -1778,7 +1791,7 @@ function update()
   }
   camera.drawGUI(xmove, ymove);
   window.requestAnimationFrame(update);
-  //ctx.translate(xmove, ymove);
+  graphics.translate(xmove, ymove);
 }
 
 document.addEventListener('keydown', (key) =>
