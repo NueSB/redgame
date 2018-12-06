@@ -389,10 +389,11 @@ function AnimatedSprite(src, x, y, w, h,
 function Color(obj)
 {
   let r = 0, g = 0, b = 0, a = 255;  // :puke:
+  a = (obj.a !== undefined ? obj.a : 255);
   if (obj.hex)
   {
     let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
-    r = cols[0], g = cols[1], b = cols[2]; a = (obj.a !== undefined ? obj.a : 255);
+    r = cols[0], g = cols[1], b = cols[2]; 
   }
   return {
     r: obj.r || r,
@@ -1070,15 +1071,14 @@ function Player(x, y)
 
     draw: function()
     {
-      let c = graphics.tintColor;
-      graphics.tintColor = new Color({hex:"#AA00FF", a:0});
+      
       if (this.vy === 0 && (this.vx < -1 || this.vx > 1))
       {
         if (this.facing === 1) this.walkSpriteB.draw(this.x, this.y, this.walkSprite.w, this.walkSprite.h);
         else this.walkSprite.draw(this.x, this.y, this.walkSprite.w, this.walkSprite.h);
       }
       else this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
-      //graphics.tintColor = c;
+      
     },
   };
   GLOBAL.OBJECTS.push(obj);
@@ -1345,14 +1345,20 @@ function GuardEye(x, y, w, h)
 
     draw: function()
     {
+      let c = graphics.tintColor;
+      //bgctx.fillStyle = "#00FF00";
+      //bgctx.fillText(graphics.tintColor, 360/2, 240/2)
+      
       if (!this.dead)
       {
         if (this.dFlash.current > 0) 
         {
-          this.sprite.x = 76;
-        } else this.sprite.x = 0; 
+          graphics.tintColor = new Color({hex: "#FFFFFF"});
+        }
       }
+      graphics.tintColor = GLOBAL.LEVEL.color;
       this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
+      graphics.tintColor = c;
     }
   }
   GLOBAL.OBJECTS.push(obj);
@@ -1606,7 +1612,7 @@ function incLoader()
       // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
       // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
     ];
-    loadLevel(GLOBAL.LEVELS[0]);
+    loadGame(0);
     update();
   }
 }
@@ -1622,8 +1628,11 @@ function glSetup()
     graphics.programs.push(generateProgram(i));
     console.log(graphics.programs);
   }
+  graphics.setShader(0);
+  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
+  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
 
-
+  console.log(graphics.tintColor.toString());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
       0, 0,
       0, 1,
@@ -1742,12 +1751,9 @@ function update()
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(0.1, 0, 0, 0.0);
+  gl.clearColor(Math.sin(TIME.frame/30), 0.01, 0, Math.sin(TIME.frame/300));
+  GLOBAL.LEVEL.color = new Color({r: Math.sin(TIME.frame/30)*155, g: 0, b:0});
   gl.clear(gl.COLOR_BUFFER_BIT);
-  graphics.setShader(0);
-  gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
-  gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
-  graphics.fillRect(0,0,6,6);
 
   
   let xmove = camera.x,
@@ -1758,7 +1764,7 @@ function update()
   //ctx.translate(-xmove, -ymove);
  
   if (GLOBAL.LEVEL.tilemap.width >= 16)
-  graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, 0, 0, 360, 240);
+    graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, 0, 0, 360, 240);
 
   for (var i = 0; i < GLOBAL.OBJECTS.length; i++)
   {
