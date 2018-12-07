@@ -138,7 +138,6 @@ let graphics =
   {
     let img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = src;
     console.log('loadimage, src='+src);
 
     img.onload = function()
@@ -153,19 +152,18 @@ let graphics =
       this.textures[name] = textureObj;
       //incLoader();
     }
+    img.src = src;
   } else 
   {
+    console.log("LOAD IMAGE: \nSRC: "+src+"\nWIDTH: "+src.width+"\nHEIGHT: "+src.height);
     textureObj.width = src.width,
     textureObj.height = src.height;
 
     gl.bindTexture(gl.TEXTURE_2D, textureObj.texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
-    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
-    //gl.generateMipmap(gl.TEXTURE_2D);
+    console.log(textureObj);
     this.textures[name] = textureObj;
   }
-  console.log(textureObj);
-  return textureObj;
 },
 
   translate: function(x, y)
@@ -175,7 +173,7 @@ let graphics =
 
   rotate: function(radAngle)
   {
-    this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.rotation(radAngle))
+    this.globalTransform = this.mat3.multiply(this.globalTransform, this.mat3.rotation(radAngle));
   },
   
   mat3: {
@@ -416,6 +414,20 @@ function Color(obj)
     toString: function() 
     {
       return `rgba(${this.r},${this.g},${this.b},${this.a})`;
+    },
+
+    add: function (c)
+    {
+      this.r += subColor.r,
+      this.g += subColor.g,
+      this.b += subColor.b;
+    },
+
+    subtract: function(subColor)
+    {
+      this.r -= subColor.r,
+      this.g -= subColor.g,
+      this.b -= subColor.b;
     }
   }
 }
@@ -1139,7 +1151,6 @@ function Camera(target)
 
     drawGUI: function(x, y)
     {
-      //console.log(this.overlay);
       if (this.overlay != null) 
       {
         this.overlay.draw(x, y, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
@@ -1590,8 +1601,9 @@ var player = new Player(0, 0),
 // init //
 function incLoader()
 {
-  console.log('load');
   loadProgress++;
+  console.log('load - '+loadProgress);
+  console.log(spritesheet.width, bgsheet.width, enemysheet.width, tilesheet.width, playersheet.width)
   if (loadProgress >= 5) 
   {
     let x = [spritesheet, bgsheet, enemysheet, tilesheet, playersheet];
@@ -1600,6 +1612,7 @@ function incLoader()
       //console.log(x[i].crossOrigin);
       graphics.loadTexture(x[i], x[i].src.split('/').slice(-1)[0].replace(/\..+/g, ''));
     }
+    console.log(graphics.textures);
     GLOBAL.LEVEL.bg.imageSmoothingEnabled = false;
     glSetup();
 
@@ -1617,9 +1630,9 @@ function incLoader()
       // Weapon(name, owner, auto, delay, offset, shots, projectile, sprite, size, kickback)
       // Projectile(x, y, xscale, yscale, spd, dir, sprite, deathTime)
     ];
-    if (localStorage.save0 != undefined)
+    /*if (localStorage.save0 != undefined)
       loadGame(0);
-    else loadLevel(GLOBAL.LEVELS[0]);
+    else*/ loadLevel(GLOBAL.LEVELS[0]);
     update();
   }
 }
@@ -1633,14 +1646,12 @@ function glSetup()
   for(let i = 0; i < graphics.shaders.length; i++)
   {
     graphics.programs.push(generateProgram(i));
-    console.log(graphics.programs);
   }
   graphics.setShader(0);
   gl.uniform2f(graphics.programs[0].vars['uResolution'].location, canvas.width, canvas.height);
   gl.uniform4f(graphics.programs[0].vars['uColor'].location, 1, 1, 1, 1);
 
-  if (graphics.globalTransform == 0)    graphics.globalTransform = graphics.mat3.identity();
-  console.log(graphics.tintColor.toString());
+  if (graphics.globalTransform == 0) graphics.globalTransform = graphics.mat3.identity();
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
       0, 0,
       0, 1,
@@ -1860,8 +1871,7 @@ function loadLevel(level, entrance=0)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
-  GLOBAL.LEVEL.color = new Color({hex: settings[1]}); 
-  console.log(GLOBAL.LEVEL.color);
+  GLOBAL.LEVEL.color = new Color({hex: settings[1]});
   GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
@@ -1877,7 +1887,6 @@ function loadLevel(level, entrance=0)
     //if (obj != null) GLOBAL.OBJECTS.push(obj);
   }
   camera.overlay = null;
-  console.log(settings);
   if (settings[4] != '-1' && settings[4] != '') camera.overlay = loadOverlay(settings[4]);
 
   // reload (weapon) animated sprites to readd them to GLOBAL.OBJECTS
@@ -2170,11 +2179,11 @@ var Easings = {
   bgsheet.src = "src/data/bgsheet.png";
   GLOBAL.LEVELS = [`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,144|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,48,207|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`#000000|#7d0239|360|240|1|---|0,176,304|1|2,-16,208,144,144,1|2,0,0,16,224,1|2,352,0,16,224,1|2,-16,-192,144,208,1|2,240,208,144,144,1|2,240,-192,144,208,1|2,112,352,144,16,1|2,112,-192,144,16,1|2,144,336,80,16,1|2,224,0,16,16,1|2,128,0,16,16,1|---|0,240,208|2,112,208|1,16,208,96,16|1,256,208,96,16|5,128,0|3,224,0,16,16|7,240,0,112,16|7,16,0,112,16|3,352,16,16,192|5,0,16,16,192|4,352,208|4,352,0|4,0,0|4,-16,224,128,128|4,0,208,16,16|4,-128,224|3,240,224,16,112|5,112,224,16,128|4,256,224,112,112|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
 
-  spritesheet.onload = incLoader();
-  bgsheet.onload = incLoader();
-  playersheet.onload = incLoader();
-  enemysheet.onload = incLoader();
-  tilesheet.onload = incLoader();
+  spritesheet.addEventListener("load", incLoader);
+  bgsheet.addEventListener("load", incLoader);
+  playersheet.addEventListener("load", incLoader);
+  enemysheet.addEventListener("load", incLoader);
+  tilesheet.addEventListener("load", incLoader);
 
   console.log(GLOBAL.LEVELS);
 })();
