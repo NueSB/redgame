@@ -27,7 +27,7 @@ var GLOBAL = {
     width: 1280,
     height: 720,
     color: new Color({hex: "#AA11FF"}),
-    bgColor: "",
+    bgColor: new Color({hex: "#000000"}),
     bgscroll: [0,0],
     bg: document.querySelector('#bg'),
     tilemap: document.querySelector('#t'),
@@ -39,7 +39,8 @@ var GLOBAL = {
 
     setBgColor: function(color)
     {
-      bgctx.fillStyle = color.type===typeof(Color) ? color.toString() : color;
+      this.bgColor = color;
+      bgctx.fillStyle = color.toString();
       bgctx.fillRect(0,0,360,240);
     }
   }
@@ -83,7 +84,7 @@ let graphics =
 
   drawImage: function(texture, sx = 0, sy = 0, sw, sh, dx, dy, dw, dh)
   {
-    this.setShader(2);
+    this.setShader(3);
     if (dw === undefined) 
     {
       dw = texture.width;
@@ -123,8 +124,8 @@ let graphics =
   let tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
 
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
@@ -316,10 +317,88 @@ let graphics =
 
       //ENDVARS
 
-      #define PI 3.14159265358979323846
+      float rand(vec2 c){
+        return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
+      }
+      
+      vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+      
+      float snoise(vec2 v){
+      const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+      -0.577350269189626, 0.024390243902439);
+      vec2 i  = floor(v + dot(v, C.yy) );
+      vec2 x0 = v -   i + dot(i, C.xx);
+      vec2 i1;
+      i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+  + i.x + vec3(0.0, i1.x, 1.0 ));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+    dot(x12.zw,x12.zw)), 0.0);
+  m = m*m ;
+  m = m*m ;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+  vec3 g;
+  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+void main()
+{
+    float n2 = snoise(uv-uTime/20.0);
+    vec3 n = vec3(step(snoise(uv+rand(uv-uTime)/9.0+uTime/9.0 - n2), 0.5));
+  
+    color = vec4(n*0.95, 1.0);
+    color.rgb *= uTint.rgb;
+}`
+    },
+
+
+    {
+      name: 'CheckerTrax',
+      vert: `#version 300 es
+      in vec2 aPos;
+      uniform float uTime;
+      uniform vec4 uTint;
+      
+      uniform vec2 uResolution;
+      uniform mat3 uMatrix;
+      out vec2 uv;
+      
+      void main()
+      {
+        vec2 position = (uMatrix * vec3(aPos.xy, 1)).xy;
+        // pixels -> 0 <-> 1
+        vec2 zerotoone = position / uResolution;
+    
+        vec2 zeroto2 = zerotoone * 2.0;
+        // 0 <-> 2 --> -1 <-> 1 (clipspace)
+        vec2 clipSpace = zeroto2 - 1.0;
+
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+        uv = clipSpace;
+      }`,
+
+      frag: `#version 300 es
+      precision highp float;
+
+      uniform float uTime;
+      uniform vec4 uTint;
+      uniform sampler2D tex0;
+      in vec2 uv;
+      out vec4 color;
+
+      //ENDVARS
 
 float rand(vec2 c){
-	return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
+    return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
 
@@ -354,14 +433,21 @@ float snoise(vec2 v){
 
 void main()
 {
-    float n2 = snoise(uv-uTime/20.0);
-    vec3 n = vec3(step(snoise(uv+rand(uv-uTime)/9.0+uTime/9.0 - n2), 0.5));
-  
-    color = vec4(n*0.95, 1.0);
-    color.rgb = mix(color.rgb, uTint.rgb, uTint.a * 0.1) * 0.45;
+
+    vec2 nu = uv * 0.7;
+    // Time varying pixel color
+    vec3 col = 0.5 + 0.5*cos(uTime+nu.xyx/2000.0+vec3(0,2,4));
+    
+    float n2 = snoise(nu-uTime/20.0);
+    vec3 n = vec3(step(snoise(nu * 0.2 +rand(nu-uTime)/9.0+uTime/9.0) + texture(tex0, nu - n2).r + n2 + texture(tex0, nu + n2).r, 0.5));
+    //vec3 n = texture(tex0, vec2(nu.x+rand(vec2(uTime, uTime))/200.0, nu.y+snoise(nu-uTime/20.0))).rgb;
+
+    color = vec4(n, 1.0);
+    //fragColor *= vec4(col, 1.0);
+    //color *= vec4(0.966, 0.0, 0.392, 1.0);
 }`
     },
-
+    
     
     {
       name: "texture",
@@ -1235,7 +1321,18 @@ function Camera(target)
     {
       if (this.overlay != null) 
       {
-        this.overlay.draw(x, y, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height);
+        for(let i = 0, c=0; i < this.overlay.w; i += this.overlay.w / 20, c++)
+        {
+          graphics.drawImage(this.overlay.src,
+          this.overlay.x+i,
+          this.overlay.y,
+          this.overlay.w/20,
+          this.overlay.h,
+          x+i, 
+          y+Math.sin(TIME.frame/5+c)*2,
+          this.overlay.w/20, 
+          this.overlay.h);
+        }
       }
       graphics.drawImage(graphics.textures.spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
       if (this.target.type === "Player")
@@ -1330,6 +1427,8 @@ function EyeGiver(x, y)
 
         GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
                                            b: progress * 140/5}));
+        graphics.bgTint = new Color({r: progress * 170/4,
+          b: progress * 140/5});
         graphics.drawColor = new Color({hex: "#FFFFFF"});
         //ctx.beginPath();
         //ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
@@ -1436,8 +1535,8 @@ function GuardEye(x, y, w, h)
       }
       if (this.dead)
       {
-        graphics.bgTint = new Color({r: Math.sin(TIME.frame/30)*255, g: 0.01, a: Math.sin(TIME.frame/300)*255});
-  GLOBAL.LEVEL.color = new Color({r: Math.sin(TIME.frame/30)*15, g: 0, b:0});
+        graphics.bgTint = new Color({b: Math.sin(TIME.frame/90)*120, g: Math.sin(TIME.frame/90)*90, r: 0, a: 255});
+        GLOBAL.LEVEL.color = new Color({b: 90+Math.sin(TIME.frame/90)*120, g: 20+Math.sin(TIME.frame/90)*90, r: 0, a: 255});
       }
       this.dFlash.current = max(this.dFlash.current-1, 0);
       this.dFlash.shakeCur = max(this.dFlash.shakeCur-1, 0);
@@ -1868,21 +1967,23 @@ function update()
   //gl.uniform1f(graphics.shader.vars['uTime'].location, TIME.frame);
   //graphics.fillRect(0,0,360,240);
   
-  graphics.setShader(1);
+  graphics.setShader(2);
+  
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, graphics.textures.playersheet.texture);
+  gl.uniform1i(graphics.shader.vars['tex0'].location, 0);
   gl.uniform2f(graphics.shader.vars['uResolution'].location, canvas.width, canvas.height);
   gl.uniform1f(graphics.shader.vars['uTime'].location, TIME.frame/100);
   let c = graphics.tintColor;
-  graphics.tintColor = GLOBAL.LEVEL.color;
   gl.uniform4f(graphics.shader.vars['uTint'].location,
-  graphics.tintColor.r / 255,
-  graphics.tintColor.g / 255,
-  graphics.tintColor.b / 255,
-  graphics.tintColor.a / 255);
+  graphics.bgTint.r / 255,
+  graphics.bgTint.g / 255,
+  graphics.bgTint.b / 255,
+  graphics.bgTint.a / 255);
   graphics.drawRect(0, 0, 360, 240);
   graphics.tintColor = c;
   graphics.translate(-xmove, -ymove);
 
- 
   if (GLOBAL.LEVEL.tilemap.width >= 16)
     graphics.drawImage(graphics.textures.tilemap, xmove, ymove, 360, 240, xmove, ymove, 360, 240);
 
@@ -2025,7 +2126,7 @@ function loadBG(index)
   bgctx = GLOBAL.LEVEL.bg.getContext('2d');
   if(index[0] === "#") 
   {
-    GLOBAL.LEVEL.bgColor = index;
+    GLOBAL.LEVEL.bgColor = new Color({hex: index});
     bgctx.fillStyle = index;
     bgctx.fillRect(0, 0, bg.width, bg.height);
   } else
