@@ -317,19 +317,22 @@ let graphics =
 
       //ENDVARS
 
-      float rand(vec2 c){
-        return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
-      }
-      
-      vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
-      
-      float snoise(vec2 v){
-      const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-      -0.577350269189626, 0.024390243902439);
-      vec2 i  = floor(v + dot(v, C.yy) );
-      vec2 x0 = v -   i + dot(i, C.xx);
-      vec2 i1;
-      i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+      #define PI 3.14159265358979323846
+
+float rand(vec2 c){
+	return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+
+vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+
+float snoise(vec2 v){
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+           -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy) );
+  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i1;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   vec4 x12 = x0.xyxy + C.xxzz;
   x12.xy -= i1;
   i = mod(i, 289.0);
@@ -434,17 +437,17 @@ float snoise(vec2 v){
 void main()
 {
 
-    vec2 nu = uv * 0.7;
+    //uv *= 0.7;
     // Time varying pixel color
-    vec3 col = 0.5 + 0.5*cos(uTime+nu.xyx/2000.0+vec3(0,2,4));
+    vec3 col = 0.5 + 0.5*cos(uTime+uv.xyx/2000.0+vec3(0,2,4));
     
-    float n2 = snoise(nu-uTime/20.0);
-    vec3 n = vec3(step(snoise(nu * 0.2 +rand(nu-uTime)/9.0+uTime/9.0) + texture(tex0, nu - n2).r + n2 + texture(tex0, nu + n2).r, 0.5));
-    //vec3 n = texture(tex0, vec2(nu.x+rand(vec2(uTime, uTime))/200.0, nu.y+snoise(nu-uTime/20.0))).rgb;
+    float n2 = snoise(uv-uTime/20.0);
+    //vec3 n = vec3(step(snoise(uv+rand(uv-uTime)/9.0+uTime/9.0) + texture(tex0, uv - n2).r + n2 + texture(tex0, uv + n2).r, 0.5));
+    vec3 n = texture(tex0, vec2(uv.x+rand(vec2(uTime, uTime))/200.0, uv.y+snoise(uv-uTime/20.0))).rgb;
 
     color = vec4(n, 1.0);
     //fragColor *= vec4(col, 1.0);
-    //color *= vec4(0.966, 0.0, 0.392, 1.0);
+    color *= vec4(vec3(0.9), 0.2);
 }`
     },
     
@@ -641,7 +644,7 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
       for (let i = 0; i < GLOBAL.OBJECTS.length; i++)
       {
         let obj = GLOBAL.OBJECTS[i];
-        if (this.collisionObjects.includes(obj.type) && 
+        if ((this.collisionObjects.includes(obj.type) || obj.solid) && 
         boxIntersect(this.x + this.spd * Math.cos(this.angle * Math.PI / 180),
               this.y + this.spd * Math.cos(this.angle * Math.PI / 180),
               this.w, this.h,
@@ -672,16 +675,17 @@ function Projectile(x, y, w, h, speed, dir, sprite, destructTime)
 function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 {
   let a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
-  a.collisionObjects = ["Object", "Enemy"];
+  a.collisionObjects = ["Enemy"];
 
   a.onCollision = function(obj)
   {
-    switch(obj.type)
+    if (obj.solid)
     {
-      case "Object":
-        this.destroy();
-        break;
-      
+      this.destroy();
+      return;
+    }
+    switch(obj.type)
+    {      
       case "Enemy":
         obj.damage(1);
         arrayRemove(this, GLOBAL.OBJECTS);
@@ -703,7 +707,7 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 {
   var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
   a.run = false;
-  a.collisionObjects = ["Object", "Enemy"];
+  a.collisionObjects = ["Enemy"];
 
   a.cUpdate = function()
   {
@@ -728,11 +732,13 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
 
   a.onCollision = function(obj)
   {
+    if (obj.solid)
+    {
+      this.spd *= -1;
+      return;
+    }
     switch(obj.type)
     {
-      case "Object":
-        this.spd *= -1;
-        break;
       case "Enemy":
         arrayRemove(this, GLOBAL.OBJECTS);
         obj.damage(1);
@@ -1312,6 +1318,31 @@ function Camera(target)
     guiObjects: [],
     update: function()
     {
+      if (this.overlay != null) 
+      {
+        for(let i = 0, c=0; i < this.overlay.w; i += this.overlay.w / 50, c++)
+        {
+          graphics.drawImage(this.overlay.src,
+          this.overlay.x+i,
+          this.overlay.y,
+          this.overlay.w/50,
+          this.overlay.h/2,
+          this.x+i, 
+          this.y+Math.sin(TIME.frame/20+c)*4,
+          this.overlay.w/50, 
+          this.overlay.h);
+
+          graphics.drawImage(this.overlay.src,
+          this.overlay.x+i,
+          this.overlay.y+this.overlay.h/2,
+          this.overlay.w/50,
+          this.overlay.h/2,
+          this.x+i, 
+          this.y-Math.sin(TIME.frame/20+c)*4,
+          this.overlay.w/50, 
+          this.overlay.h);
+        }
+      }
       this.x = clamp(lerp(this.x, this.target.x - canvas.width/2 + this.offsetX, this.lerpspeed), 0, GLOBAL.LEVEL.width - canvas.width);
       this.y = clamp(lerp(this.y, this.target.y - canvas.height/2 + this.offsetY, this.lerpspeed), 0, GLOBAL.LEVEL.height - canvas.height);
 
@@ -1321,20 +1352,10 @@ function Camera(target)
     {
       if (this.overlay != null) 
       {
-        for(let i = 0, c=0; i < this.overlay.w; i += this.overlay.w / 20, c++)
-        {
-          graphics.drawImage(this.overlay.src,
-          this.overlay.x+i,
-          this.overlay.y,
-          this.overlay.w/20,
-          this.overlay.h,
-          x+i, 
-          y+Math.sin(TIME.frame/5+c)*2,
-          this.overlay.w/20, 
-          this.overlay.h);
-        }
+        this.overlay.draw(x, y, this.overlay.w, this.overlay.h);
       }
       graphics.drawImage(graphics.textures.spritesheet, 31, 0, 73, 11, x + 1, y, 73, 11);
+ 
       if (this.target.type === "Player")
       { 
         graphics.drawColor = GLOBAL.LEVEL.color;
@@ -1425,10 +1446,8 @@ function EyeGiver(x, y)
         GLOBAL.LEVEL.color = new Color({r: progress * 255,
                                         b: progress * 110});
 
-        GLOBAL.LEVEL.setBgColor(new Color({r: progress * 170/4,
+        GLOBAL.LEVEL.bgTint = (new Color({r: progress * 170/4,
                                            b: progress * 140/5}));
-        graphics.bgTint = new Color({r: progress * 170/4,
-          b: progress * 140/5});
         graphics.drawColor = new Color({hex: "#FFFFFF"});
         //ctx.beginPath();
         //ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
@@ -1536,7 +1555,7 @@ function GuardEye(x, y, w, h)
       if (this.dead)
       {
         graphics.bgTint = new Color({b: Math.sin(TIME.frame/90)*120, g: Math.sin(TIME.frame/90)*90, r: 0, a: 255});
-        GLOBAL.LEVEL.color = new Color({b: 90+Math.sin(TIME.frame/90)*120, g: 20+Math.sin(TIME.frame/90)*90, r: 0, a: 255});
+        GLOBAL.LEVEL.color = new Color({b: 120-graphics.bgTint.b, g: 90-graphics.bgTint.g, r: 0, a: 255});
       }
       this.dFlash.current = max(this.dFlash.current-1, 0);
       this.dFlash.shakeCur = max(this.dFlash.shakeCur-1, 0);
@@ -1771,6 +1790,28 @@ function hmm(x, y)
       if (this.time >= 60) arrayRemove(this, GLOBAL.OBJECTS);
     }
   }
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
+function BallBoss(x, y)
+{
+  let obj = 
+  {
+    x: x,
+    y: y,
+    xscale: 32,
+    yscale: 32,
+    solid: true,
+    update: function()
+    {
+      this.draw();
+    },
+    draw: function()
+    {
+      graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
+    }
+  };
   GLOBAL.OBJECTS.push(obj);
   return obj;
 }
@@ -2027,7 +2068,7 @@ Params:
 id, x, y, w, h  EXTRA
 /******************/
 
-let types = [Player, Camera, Wall, null, null, Enemy, EyeGiver, GuardEye, CollisionRoomChanger, BulletFlash, BackgroundImage, ElevatorPlatform, SlideDoor, SaveStation];
+let types = [Player, Camera, Wall, null, null, Enemy, EyeGiver, GuardEye, CollisionRoomChanger, BulletFlash, BackgroundImage, ElevatorPlatform, SlideDoor, SaveStation, BallBoss];
 
 function parseID(params)
 {
@@ -2043,7 +2084,7 @@ function parseID(params)
     camera = new Camera(player);
     return camera;
   }
-  if (obj === null)
+  if (obj === undefined)
   {
     console.error(`INVALID OBJECT: PARAMS\n${params}`);
     return null;
@@ -2101,7 +2142,6 @@ function loadLevel(level, entrance=0)
       GLOBAL.OBJECTS.push(wep.projectile.sprite);
     }
   }
-  
 
   
   GLOBAL.LEVEL.entrances = settings[5].split(',').map(x => x.split('\'').map(y => parseInt(y)));
@@ -2119,6 +2159,10 @@ function loadLevel(level, entrance=0)
 
   loadTileMap(tiles);
   graphics.loadTexture(GLOBAL.LEVEL.tilemap, 'tilemap');
+
+  let a = GLOBAL.OBJECTS[0];
+  GLOBAL.OBJECTS[0] = GLOBAL.OBJECTS[1];
+  GLOBAL.OBJECTS[1] = a;
 }
 
 function loadBG(index)
@@ -2378,8 +2422,8 @@ var Easings = {
   enemysheet.src = "src/data/enemysheet.png";
   tilesheet.src = "src/data/tilesheet.png";
   bgsheet.src = "src/data/bgsheet.png";
-  GLOBAL.LEVELS = [`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,144|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,48,207|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`#000000|#7d0239|360|240|1|---|0,176,304|1|2,-16,208,144,144,1|2,0,0,16,224,1|2,352,0,16,224,1|2,-16,-192,144,208,1|2,240,208,144,144,1|2,240,-192,144,208,1|2,112,352,144,16,1|2,112,-192,144,16,1|2,144,336,80,16,1|2,224,0,16,16,1|2,128,0,16,16,1|---|0,240,208|2,112,208|1,16,208,96,16|1,256,208,96,16|5,128,0|3,224,0,16,16|7,240,0,112,16|7,16,0,112,16|3,352,16,16,192|5,0,16,16,192|4,352,208|4,352,0|4,0,0|4,-16,224,128,128|4,0,208,16,16|4,-128,224|3,240,224,16,112|5,112,224,16,128|4,256,224,112,112|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
-
+  GLOBAL.LEVELS = [`3,0,0|#AA11FF|360|240||---|0,176,192|1|2,0,224,368,16,1|2,368,0,16,224|2,-16,0,16,224|2,0,0,368,16,1|14,176,96|---|10,0,224,368,16|16,0,0,368,16|`,`#000000|#AA11FF|460|240|-1|90'-200|---|0,64,144|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,48,207|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,`#000000|#AA11FF|360|240|-1|90'-200|---|0,256,176|1|2,0,208,368,48|2,0,0,368,16|2,-16,0,16,256|2,352,16,16,112|2,352,144,16,16|---|1,0,208,368,16|7,0,0,352,16|4,-16,224,384,32|6,352,112|3,352,16,16,96|5,-16,16,16,192|3,96,16,16,192|4,112,16,240,192|`,`0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,`1,1,0|#AA11FF|360|240|1|---|0,32,32|1|2,0,0,368,16|2,0,224,368,48|2,-16,16,16,208|2,352,16,16,128|8,352,120,300,120|12,352,120,16,96|---|18,0,0,120,240|19,120,0,140,240|20,240,0,120,240|`,`1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,`#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
+  
   spritesheet.addEventListener("load", incLoader);
   bgsheet.addEventListener("load", incLoader);
   playersheet.addEventListener("load", incLoader);
