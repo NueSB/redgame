@@ -1779,10 +1779,38 @@ function BallBoss(x, y)
     solid: false,
     hp: 250,
     state: 0,
+    vx: 0,
+    vy: 0,
     type: "Enemy",
-    
+
+    phaser: function(n)
+    {
+      switch(n)
+      {
+        case 0:
+        break;
+
+        case 1:
+          this.vy = clamp(this.vy + 0.1 * GLOBAL.GRAVITY, -7, 7);
+          for (let i = 0; i < Math.abs(this.vy); i++)
+          {
+            if (collideType(this, "Object"))
+            {
+              this.vy *= -1;
+            }
+            this.y -= 1 * sign(this.vy);
+          }
+        break;
+
+        case 2: break;
+
+        case 3: break;
+      }
+    },
+
     damage: function(n)
     {
+      console.log(this.hp, n, this.state);
       this.hp -= n;
       if (this.hp >= 200)
       {
@@ -1798,11 +1826,7 @@ function BallBoss(x, y)
 
     update: function()
     {
-      switch(this.state)
-      {
-        
-        default: break;
-      }
+      this.phaser(this.state);
       this.draw();
     },
     draw: function()
