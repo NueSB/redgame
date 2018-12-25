@@ -120,7 +120,7 @@ let graphics =
   },
 
   loadTexture: function(src, name)
-{
+  {
   let tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
 
@@ -1318,34 +1318,8 @@ function Camera(target)
     guiObjects: [],
     update: function()
     {
-      if (this.overlay != null) 
-      {
-        for(let i = 0, c=0; i < this.overlay.w; i += this.overlay.w / 50, c++)
-        {
-          graphics.drawImage(this.overlay.src,
-          this.overlay.x+i,
-          this.overlay.y,
-          this.overlay.w/50,
-          this.overlay.h/2,
-          this.x+i, 
-          this.y+Math.sin(TIME.frame/20+c)*4,
-          this.overlay.w/50, 
-          this.overlay.h);
-
-          graphics.drawImage(this.overlay.src,
-          this.overlay.x+i,
-          this.overlay.y+this.overlay.h/2,
-          this.overlay.w/50,
-          this.overlay.h/2,
-          this.x+i, 
-          this.y-Math.sin(TIME.frame/20+c)*4,
-          this.overlay.w/50, 
-          this.overlay.h);
-        }
-      }
       this.x = clamp(lerp(this.x, this.target.x - canvas.width/2 + this.offsetX, this.lerpspeed), 0, GLOBAL.LEVEL.width - canvas.width);
       this.y = clamp(lerp(this.y, this.target.y - canvas.height/2 + this.offsetY, this.lerpspeed), 0, GLOBAL.LEVEL.height - canvas.height);
-
     },
 
     drawGUI: function(x, y)
@@ -1802,9 +1776,18 @@ function BallBoss(x, y)
     y: y,
     xscale: 32,
     yscale: 32,
-    solid: true,
+    solid: false,
+    hp: 250,
+    type: "Enemy",
+    
+    damage: function(n)
+    {
+
+    },
+
     update: function()
     {
+
       this.draw();
     },
     draw: function()
@@ -1989,6 +1972,7 @@ function generateProgram(index)
 function update()
 {
   ++TIME.frame;
+
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -1997,12 +1981,33 @@ function update()
    graphics.bgTint.b/255, 
    graphics.bgTint.a/255);
   gl.clear(gl.COLOR_BUFFER_BIT);
+  if (camera.overlay != null) 
+  {
+    for (let i = 0, c = 0; i < camera.overlay.w; i += camera.overlay.w / 50, c++) {
+      graphics.drawImage(camera.overlay.src,
+        camera.overlay.x + i,
+        camera.overlay.y,
+        camera.overlay.w / 50,
+        camera.overlay.h / 2,
+        camera.x + i,
+        camera.y + Math.sin(TIME.frame / 20 + c) * 4,
+        camera.overlay.w / 50,
+        camera.overlay.h);
 
-  
+      graphics.drawImage(camera.overlay.src,
+        camera.overlay.x + i,
+        camera.overlay.y + camera.overlay.h / 2,
+        camera.overlay.w / 50,
+        camera.overlay.h / 2,
+        camera.x + i,
+        camera.y - Math.sin(TIME.frame / 20 + c) * 4,
+        camera.overlay.w / 50,
+        camera.overlay.h);
+    }
+  }
   let xmove = camera.x,
       ymove = camera.y;
-  
-  bgctx.drawImage(GLOBAL.LEVEL.bg, 0, 0, GLOBAL.LEVEL.bg.width, GLOBAL.LEVEL.bg.height, 0, 0, canvas.width, canvas.height);
+      
 
   //graphics.setShader(2);
   //gl.uniform1f(graphics.shader.vars['uTime'].location, TIME.frame);
@@ -2017,10 +2022,10 @@ function update()
   gl.uniform1f(graphics.shader.vars['uTime'].location, TIME.frame/100);
   let c = graphics.tintColor;
   gl.uniform4f(graphics.shader.vars['uTint'].location,
-  graphics.bgTint.r / 255,
-  graphics.bgTint.g / 255,
-  graphics.bgTint.b / 255,
-  graphics.bgTint.a / 255);
+              graphics.bgTint.r / 255,
+              graphics.bgTint.g / 255,
+              graphics.bgTint.b / 255,
+              graphics.bgTint.a / 255);
   graphics.drawRect(0, 0, 360, 240);
   graphics.tintColor = c;
   graphics.translate(-xmove, -ymove);
