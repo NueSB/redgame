@@ -1778,16 +1778,31 @@ function BallBoss(x, y)
     yscale: 32,
     solid: false,
     hp: 250,
+    state: 0,
     type: "Enemy",
     
     damage: function(n)
     {
-
+      this.hp -= n;
+      if (this.hp >= 200)
+      {
+        this.state = 1;
+      } else if (this.hp >= 100) this.state = 2;
+      else if (this.hp > 0) this.state = 3;
+      else 
+      {
+        this.state = 4;
+        this.dead = true;
+      }
     },
 
     update: function()
     {
-
+      switch(this.state)
+      {
+        
+        default: break;
+      }
       this.draw();
     },
     draw: function()
