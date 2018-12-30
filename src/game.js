@@ -700,6 +700,8 @@ function TestPistolProjectile(x, y, w, h, speed, dir, sprite, destructTime)
       this.spd *= 0.99;
     }
   };
+
+
   return a;
 }
 
@@ -708,7 +710,7 @@ function PumpProjectile(x, y, w, h, speed, dir, sprite, destructTime)
   var a = new Projectile(x, y, w, h, speed, dir, sprite, destructTime);
   a.run = false;
   a.collisionObjects = ["Enemy"];
-
+  
   a.cUpdate = function()
   {
     if (!this.run)
@@ -1072,7 +1074,7 @@ function Player(x, y)
     input: function()
     {
       let left = boolInt(keyDown("ARROWLEFT")),
-        right = boolInt(keyDown("ARROWRIGHT"));
+          right = boolInt(keyDown("ARROWRIGHT"));
       wepSwitch = [keyPressed("A"), keyPressed("S")];
 
       this.up = boolInt(keyDown("ARROWUP"));
@@ -1420,7 +1422,7 @@ function EyeGiver(x, y)
         GLOBAL.LEVEL.color = new Color({r: progress * 255,
                                         b: progress * 110});
 
-        GLOBAL.LEVEL.bgTint = (new Color({r: progress * 170/4,
+        graphics.bgTint = (new Color({r: progress * 170/4,
                                            b: progress * 140/5}));
         graphics.drawColor = new Color({hex: "#FFFFFF"});
         //ctx.beginPath();
@@ -1838,6 +1840,38 @@ function BallBoss(x, y)
   return obj;
 }
 
+function TimedObject(x, y, w, h, sprite, time)
+{
+  let obj = {
+    x: x,
+    y: y,
+    xscale: w,
+    yscale: h,
+    sprite: sprite,
+    time: time,
+
+    update: function()
+    {
+      this.time--;
+      if (this.time < 0)
+        this.onDeath();
+      this.draw();
+    },
+
+    draw: function()
+    {
+      this.sprite.draw(this.x, this.y, this.xscale, this.yscale);
+    },
+
+    onDeath: function()
+    {
+      arrayRemove(this, GLOBAL.OBJECTS);
+    }
+  };
+  GLOBAL.OBJECTS.push(obj);
+  return obj;
+}
+
 var player = new Player(0, 0),
     camera = new Camera(player);
 
@@ -2010,6 +2044,9 @@ function generateProgram(index)
 
 function update()
 {
+  let xmove = camera.x,
+      ymove = camera.y;
+  
   ++TIME.frame;
 
   gl.viewport(0, 0, canvas.width, canvas.height);
@@ -2020,6 +2057,7 @@ function update()
    graphics.bgTint.b/255, 
    graphics.bgTint.a/255);
   gl.clear(gl.COLOR_BUFFER_BIT);
+  
   if (camera.overlay != null) 
   {
     for (let i = 0, c = 0; i < camera.overlay.w; i += camera.overlay.w / 50, c++) {
@@ -2028,8 +2066,8 @@ function update()
         camera.overlay.y,
         camera.overlay.w / 50,
         camera.overlay.h / 2,
-        camera.x + i,
-        camera.y + Math.sin(TIME.frame / 20 + c) * 4,
+        i,
+        Math.sin(TIME.frame / 20 + c) * 4,
         camera.overlay.w / 50,
         camera.overlay.h);
 
@@ -2038,22 +2076,21 @@ function update()
         camera.overlay.y + camera.overlay.h / 2,
         camera.overlay.w / 50,
         camera.overlay.h / 2,
-        camera.x + i,
-        camera.y - Math.sin(TIME.frame / 20 + c) * 4,
+        i,
+        Math.sin(TIME.frame / 20 + c) * 4,
         camera.overlay.w / 50,
         camera.overlay.h);
     }
   }
-  let xmove = camera.x,
-      ymove = camera.y;
+
       
 
   //graphics.setShader(2);
   //gl.uniform1f(graphics.shader.vars['uTime'].location, TIME.frame);
   //graphics.fillRect(0,0,360,240);
   
+  /*
   graphics.setShader(2);
-  
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, graphics.textures.playersheet.texture);
   gl.uniform1i(graphics.shader.vars['tex0'].location, 0);
@@ -2067,6 +2104,7 @@ function update()
               graphics.bgTint.a / 255);
   graphics.drawRect(0, 0, 360, 240);
   graphics.tintColor = c;
+  */ //TODO: move this to a FancyBG function
   graphics.translate(-xmove, -ymove);
 
   if (GLOBAL.LEVEL.tilemap.width >= 16)
@@ -2150,6 +2188,8 @@ function loadLevel(level, entrance=0)
   GLOBAL.LEVEL.tilemap = document.querySelector('#t');
   GLOBAL.GRAVITY = 1;
   GLOBAL.LEVELINDEX = GLOBAL.LEVELS.indexOf(level);
+  graphics.bgTint = new Color({r: 0, g: 0, b: 0, a: 0});
+  graphics.tintColor = new Color({r: 0, g: 0, b: 0, a: 0});
 
   level = level.split('---');
   let settings = level[0].split('|');
@@ -2212,6 +2252,8 @@ function loadLevel(level, entrance=0)
 function loadBG(index)
 {
   bgctx = GLOBAL.LEVEL.bg.getContext('2d');
+  bgctx.clearRect(0,0,360,240);
+  
   if(index[0] === "#") 
   {
     GLOBAL.LEVEL.bgColor = new Color({hex: index});
