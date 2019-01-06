@@ -53,6 +53,7 @@ let graphics =
   bgTint: new Color(0,0,0,0),
   globalTransform: 0,
 
+
   rect: function(x,y,w,h)
   {
     let matrix = this.mat3.multiply(this.globalTransform, this.mat3.translation(x,y));
@@ -247,6 +248,21 @@ let graphics =
         b20 * a02 + b21 * a12 + b22 * a22,
       ];
     }
+  },
+  
+  color: {
+    lerp: function(ca, cb, amt)
+    {
+      return new Color(lerp(ca.r, cb.r, amt),
+                       lerp(ca.g, cb.g, amt),
+                       lerp(ca.b, cb.b, amt));
+    },
+
+    white: new Color(255,255,255),
+    black: new Color(0,0,0),
+    red: new Color(255,0,0),
+    green: new Color(0,255,0),
+    blue: new Color(0,0,255),
   },
 
   shader: null,
@@ -588,7 +604,7 @@ function Color(r=0, g=0, b=0, a=255)
       return `rgba(${this.r},${this.g},${this.b},${this.a})`;
     },
 
-    add: function (c)
+    add: function (subColor)
     {
       this.r += subColor.r,
       this.g += subColor.g,
@@ -600,7 +616,7 @@ function Color(r=0, g=0, b=0, a=255)
       this.r -= subColor.r,
       this.g -= subColor.g,
       this.b -= subColor.b;
-    }
+    },
   }
 }
 
@@ -1531,7 +1547,7 @@ function GuardEye(x, y, w, h)
       if (this.dead)
       {
         graphics.bgTint = new Color(0, Math.sin(TIME.frame/90)*120, Math.sin(TIME.frame/90)*90, 255);
-        GLOBAL.LEVEL.color = new Color(0, 120-graphics.bgTint.b, 90-graphics.bgTint.g, 255);
+        GLOBAL.LEVEL.color = new Color(0, 120-graphics.bgTint.g, 90-graphics.bgTint.b, 255);
       }
       this.dFlash.current = max(this.dFlash.current-1, 0);
       this.dFlash.shakeCur = max(this.dFlash.shakeCur-1, 0);
@@ -1784,9 +1800,9 @@ function BallBoss(x, y)
     stateTimer: 0,
     shake: 0,
     damageFlash: {
-      amt: 40,
+      amt: 45,
       current: 0,
-      shakeAmt: 120,
+      shakeAmt: 45,
       shakeCur: 0
     },
     vx: 0,
@@ -1822,7 +1838,11 @@ function BallBoss(x, y)
         case 2:
         if (this.stateTimer < 120)
         {
-          this.y = lerp(280, 100, Easings.easeOutQuart(this.stateTimer/120));
+          let ratio = Easings.easeOutQuart(this.stateTimer/120);
+          this.y = lerp(280, 100, ratio);
+          GLOBAL.LEVEL.color = graphics.color.lerp(GLOBAL.LEVEL.color, new Color(247, 0, 103), ratio);
+          GLOBAL.LEVEL.bgColor = graphics.color.lerp(GLOBAL.LEVEL.bgColor, new Color(73, 0, 54), ratio);
+
         }
         break;
 
@@ -1857,19 +1877,16 @@ function BallBoss(x, y)
     update: function()
     {
       this.phaser(this.state);
-      if (this.damageFlash.shakeCur > 0)
-      {
-        let count = this.damageFlash.shakeCur / this.damageFlash.shakeAmt * 10;
-        this.y += randrange(count, -count);
-        this.x += randrange(count, -count);
-        this.damageFlash.shakeCur--;
-      }
+      
+      this.damageFlash.shakeCur = max(this.damageFlash.shakeCur-1, 0);
+      this.damageFlash.current = max(this.damageFlash.current-1, 0);
       this.draw();
     },
     draw: function()
     {
-      if (this.damageFlash.current > 0) graphics.fillStyle = new Color("#000000");
-      graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
+      let count = this.damageFlash.shakeCur / this.damageFlash.shakeAmt * 10;
+      if (this.damageFlash.current > 0) graphics.drawColor = new Color("#FFFFFF");
+      graphics.fillRect(this.x+randrange(count, -count), this.y+randrange(count, -count), this.xscale, this.yscale);
     }
   };
   GLOBAL.OBJECTS.push(obj);
@@ -1923,7 +1940,6 @@ function incLoader()
     let x = [spritesheet, bgsheet, enemysheet, tilesheet, playersheet];
     for(let i = 0; i < x.length; i++)
     {
-      //console.log(x[i].crossOrigin);
       graphics.loadTexture(x[i], x[i].src.split('/').slice(-1)[0].replace(/\..+/g, ''));
     }
     console.log(graphics.textures);
