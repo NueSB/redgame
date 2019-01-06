@@ -1781,30 +1781,43 @@ function BallBoss(x, y)
     solid: false,
     hp: 250,
     state: 0,
+    stateTimer: 0,
     vx: 0,
     vy: 0,
     type: "Enemy",
 
+    setState: function(n)
+    {
+      this.state = n;
+      this.stateTimer = 0;
+    },
+
     phaser: function(n)
     {
+      this.stateTimer++;
       switch(n)
       {
         case 0:
+          this.y += Math.sin(this.stateTimer/20);
         break;
 
         case 1:
-          this.vy = clamp(this.vy + 0.1 * GLOBAL.GRAVITY, -7, 7);
-          for (let i = 0; i < Math.abs(this.vy); i++)
+          this.vy += 0.1;
+          this.y += this.vy;
+          if (this.stateTimer === 290)
           {
-            if (collideType(this, "Object"))
-            {
-              this.vy *= -1;
-            }
-            this.y -= 1 * sign(this.vy);
+            this.x = 360/2-this.xscale/2;
+            this.y = 280;
+            this.setState(2);
           }
         break;
 
-        case 2: break;
+        case 2:
+        if (this.stateTimer < 120)
+        {
+          this.y = lerp(280, 100, Easings.easeOutQuart(this.stateTimer/120));
+        }
+        break;
 
         case 3: break;
       }
@@ -1814,15 +1827,21 @@ function BallBoss(x, y)
     {
       console.log(this.hp, n, this.state);
       this.hp -= n;
-      if (this.hp >= 200)
+      if (this.hp <= 240 && this.state === 0)
       {
+        this.vy = -3;
         this.state = 1;
-      } else if (this.hp >= 100) this.state = 2;
-      else if (this.hp > 0) this.state = 3;
-      else 
+
+        console.log("setting state "+this.state)
+        this.setState(1);
+      } else if (this.hp <= 100 && this.state === 2) 
       {
-        this.state = 4;
-        this.dead = true;
+        console.log("setting state "+this.state)
+        this.setState(3);
+      } else if (this.hp <= 0 && this.state === 3) 
+      {
+        console.log("setting state "+this.state)
+        this.setState(4);
       }
     },
 
@@ -2353,6 +2372,20 @@ function collideType(objA, type)
   return false;
 }
 
+function collideTypeObj(objA, type)
+{
+  for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
+  {
+    let obj = GLOBAL.OBJECTS[i];
+    if (obj.type == type && boxIntersect(objA.x, objA.y, objA.xscale, objA.yscale,
+    obj.x, obj.y, obj.xscale, obj.yscale))
+    {
+      return obj;
+    }
+  }
+  return false;
+}
+
 function findType(type)
 {
   for(let i = 0; i < GLOBAL.OBJECTS.length; i++)
@@ -2510,11 +2543,11 @@ var Easings = {
   bgsheet.src = "src/data/bgsheet.png";
   GLOBAL.LEVELS = [`3,0,0|#AA11FF|360|240||---|0,176,192|1|2,0,224,368,16,1|2,368,0,16,224|2,-16,0,16,224|2,0,0,368,16,1|14,176,96|---|10,0,224,368,16|16,0,0,368,16|`,
   `#000000|#AA11FF|460|240|-1|90'-200|---|0,64,144|1|2,0,0,16,240,1|2,16,224,320,16,1|2,16,0,336,16,1|2,320,16,16,128,1|2,0,-96,336,176,1|2,448,-112,16,352,1|11,352,224,80,16|2,320,240,144,16,1|2,432,0,16,16,1|13,48,207|2,160,176,16,16,1|2,336,-80,112,16|---|1,16,224,304,16|2,320,224|5,0,80,16,144|4,0,224|7,16,64,304,16|4,0,0,320,64|4,320,0|4,448,0|6,432,0|8,336,0|5,320,16,16,128|3,448,16,16,224|0,352,224|2,416,224|1,368,224,48,16|4,0,64|`,
-  `2,0.05,0|#000000|360|240|1|90'-200|---|0,256,176|1|2,0,208,368,48|2,0,0,368,16|2,-16,0,16,256|2,352,16,16,112|2,352,144,16,16|---|19,0,0,352,16|19,-16,224,384,32|26,352,112|23,352,16,16,96|25,-16,16,16,192|21,96,16,16,192|24,112,16,240,192|`,
+  `2,0.25,0|#000000|360|240|1|---|0,272,192|1|2,0,224,368,16,1|2,0,0,16,224,1|2,0,0,352,16,1|2,352,-16,16,192,1|8,368,160,80,80|---|21,112,16,16,208|22,128,16,224,208|1,16,224,352,16|5,0,16,16,208|3,352,16,16,144|7,16,0,336,16|6,352,160|`,
   `0,1,0|#6A00FF|360|240|0|---|0,20,90|1|7,290,30,16,128|2,0,144,32,128|2,0,0,32,80|2,304,176,80,128|2,304,-48,80,112|2,32,64,16,16|2,32,144,16,16|8,400,70,40,120|---|9,0,140|`,
   `1,1,0|#6A00FF|820|240|1|---|0,96,128|1|2,0,208,592,144|2,0,0,784,32|2,576,32,16,32|2,784,0,112,352|2,608,208,160,16|2,-16,16,16,208|---||`,
   `#000021|#000011|1280|720|0|---|0,368,224|1|2,240,256,272,192,1|6,368,130,0|---|1,256,256,240,16|0,240,256|2,496,256|5,496,272,16,176|3,240,272,16,176|4,256,272,240,176|`];
-  
+
   spritesheet.addEventListener("load", incLoader);
   bgsheet.addEventListener("load", incLoader);
   playersheet.addEventListener("load", incLoader);
