@@ -26,8 +26,8 @@ var GLOBAL = {
   {
     width: 1280,
     height: 720,
-    color: new Color({hex: "#AA11FF"}),
-    bgColor: new Color({hex: "#000000"}),
+    color: new Color("#AA11FF"),
+    bgColor: new Color("#000000"),
     bgscroll: [0,0],
     bg: document.querySelector('#bg'),
     tilemap: document.querySelector('#t'),
@@ -48,9 +48,9 @@ var GLOBAL = {
 
 let graphics = 
 {
-  drawColor: new Color({r:255,g:255,b:255,a:255}),
-  tintColor: new Color({r:255,g:255,b:255,a:0}),
-  bgTint: new Color({r:0,g:0,b:0,a:0}),
+  drawColor: new Color(255,255,255,255),
+  tintColor: new Color(255,255,255,0),
+  bgTint: new Color(0,0,0,0),
   globalTransform: 0,
 
   rect: function(x,y,w,h)
@@ -567,21 +567,22 @@ function AnimatedSprite(src, x, y, w, h,
   return a;
 }
 
-function Color(obj)
+function Color(r=0, g=0, b=0, a=255)
 {
-  let r = 0, g = 0, b = 0, a = 255;  // :puke:
-  a = (obj.a !== undefined ? obj.a : 255);
-  if (obj.hex)
+  let rr = 0, gg = 0, bb = 0, aa = 255;  // :puke:
+  let hex = typeof(r) === "string";
+  if (a <= 0) aa = 0;
+  if (hex)
   {
-    let cols = obj.hex.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
-    r = cols[0], g = cols[1], b = cols[2]; 
+    let cols = r.slice(1).match(/.{1,2}/g).map(x=>parseInt(x, 16));
+    rr = cols[0], gg = cols[1], bb = cols[2]; 
   }
   return {
-    r: obj.r || r,
-    g: obj.g || g,
-    b: obj.b || b,
-    a: obj.a || a,
-    hex: obj.hex || null,
+    r: (hex ? rr : r),
+    g: g || gg,
+    b: b || bb,
+    a: a || aa,
+    hex: (hex ? r : null),
     toString: function() 
     {
       return `rgba(${this.r},${this.g},${this.b},${this.a})`;
@@ -1381,7 +1382,7 @@ function SlideTransition(speed, out, lvl, entranceID=0)
       this.x = camera.x;
       this.y = camera.y;
       this.w += this.timer;
-      graphics.drawColor = new Color({hex: "#000000"});
+      graphics.drawColor = new Color("#000000");
       graphics.fillRect(this.x, this.y, this.w, this.h);
       
       if (this.out && this.w >= canvas.width) 
@@ -1419,12 +1420,11 @@ function EyeGiver(x, y)
       {
         let size = this.scale * Easings.easeInOutCubic(progress);
 
-        GLOBAL.LEVEL.color = new Color({r: progress * 255,
-                                        b: progress * 110});
+        GLOBAL.LEVEL.color = new Color(progress * 255, progress * 110);
 
-        graphics.bgTint = (new Color({r: progress * 170/4,
-                                           b: progress * 140/5}));
-        graphics.drawColor = new Color({hex: "#FFFFFF"});
+        graphics.bgTint = (new Color(progress * 170/4,
+                                    progress * 140/5));
+        graphics.drawColor = new Color("#FFFFFF");
         //ctx.beginPath();
         //ctx.arc(this.x + Math.sin(size * 15 * Math.PI/180) * size/2, this.y + Math.cos(size * 16 * Math.PI/180) * size/2, size, 0, 2 * Math.PI, false);
         if (true) {} else {
@@ -1530,8 +1530,8 @@ function GuardEye(x, y, w, h)
       }
       if (this.dead)
       {
-        graphics.bgTint = new Color({b: Math.sin(TIME.frame/90)*120, g: Math.sin(TIME.frame/90)*90, r: 0, a: 255});
-        GLOBAL.LEVEL.color = new Color({b: 120-graphics.bgTint.b, g: 90-graphics.bgTint.g, r: 0, a: 255});
+        graphics.bgTint = new Color(0, Math.sin(TIME.frame/90)*120, Math.sin(TIME.frame/90)*90, 255);
+        GLOBAL.LEVEL.color = new Color(0, 120-graphics.bgTint.b, 90-graphics.bgTint.g, 255);
       }
       this.dFlash.current = max(this.dFlash.current-1, 0);
       this.dFlash.shakeCur = max(this.dFlash.shakeCur-1, 0);
@@ -1546,7 +1546,7 @@ function GuardEye(x, y, w, h)
       {
         if (this.dFlash.current > 0) 
         {
-          graphics.tintColor = new Color({hex: "#FFFFFF"});
+          graphics.tintColor = new Color("#FFFFFF");
         }
       } else graphics.tintColor = GLOBAL.LEVEL.color;
       this.sprite.draw(this.x, this.y, this.sprite.w, this.sprite.h);
@@ -1782,6 +1782,13 @@ function BallBoss(x, y)
     hp: 250,
     state: 0,
     stateTimer: 0,
+    shake: 0,
+    damageFlash: {
+      amt: 40,
+      current: 0,
+      shakeAmt: 120,
+      shakeCur: 0
+    },
     vx: 0,
     vy: 0,
     type: "Enemy",
@@ -1826,6 +1833,8 @@ function BallBoss(x, y)
     damage: function(n)
     {
       console.log(this.hp, n, this.state);
+      this.damageFlash.current = this.damageFlash.amt;
+      this.damageFlash.shakeCur = this.damageFlash.shakeAmt;
       this.hp -= n;
       if (this.hp <= 240 && this.state === 0)
       {
@@ -1848,10 +1857,18 @@ function BallBoss(x, y)
     update: function()
     {
       this.phaser(this.state);
+      if (this.damageFlash.shakeCur > 0)
+      {
+        let count = this.damageFlash.shakeCur / this.damageFlash.shakeAmt * 10;
+        this.y += randrange(count, -count);
+        this.x += randrange(count, -count);
+        this.damageFlash.shakeCur--;
+      }
       this.draw();
     },
     draw: function()
     {
+      if (this.damageFlash.current > 0) graphics.fillStyle = new Color("#000000");
       graphics.fillRect(this.x, this.y, this.xscale, this.yscale);
     }
   };
@@ -2207,8 +2224,8 @@ function loadLevel(level, entrance=0)
   GLOBAL.LEVEL.tilemap = document.querySelector('#t');
   GLOBAL.GRAVITY = 1;
   GLOBAL.LEVELINDEX = GLOBAL.LEVELS.indexOf(level);
-  graphics.bgTint = new Color({r: 0, g: 0, b: 0, a: 0});
-  graphics.tintColor = new Color({r: 0, g: 0, b: 0, a: 0});
+  graphics.bgTint = new Color(0,0,0,0);
+  graphics.tintColor = new Color(0,0,0,0);
 
   level = level.split('---');
   let settings = level[0].split('|');
@@ -2216,7 +2233,9 @@ function loadLevel(level, entrance=0)
   let tiles = level[2].split('|');
 
   loadBG(settings[0]);
-  GLOBAL.LEVEL.color = new Color({hex: settings[1]});
+  console.log(settings[1])
+  GLOBAL.LEVEL.color = new Color(settings[1]);
+  console.log(GLOBAL.LEVEL.color);
   GLOBAL.LEVEL.width = settings[2]; GLOBAL.LEVEL.height = settings[3];
 
   for (let i = 0; i < lvl.length; i++)
@@ -2275,7 +2294,7 @@ function loadBG(index)
   
   if(index[0] === "#") 
   {
-    GLOBAL.LEVEL.bgColor = new Color({hex: index});
+    GLOBAL.LEVEL.bgColor = new Color(index);
     bgctx.fillStyle = index;
     bgctx.fillRect(0, 0, bg.width, bg.height);
   } else
